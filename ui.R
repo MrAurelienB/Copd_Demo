@@ -8,20 +8,19 @@
 #
 
 library(shiny)
+library(shinythemes)
 
-
-
-header <- dashboardHeader(title = strong("COPD-demo"),titleWidth = 200, disable = FALSE)
-
-
-
-
-sidebar <- dashboardSidebar(
-  width = 200,
-  sidebarMenu(id="menu",
-              menuItem(strong("Home"),tabName = "home", icon = icon("home")),
-              menuItem(strong("Data"), tabName = "data", icon = icon("file")),
-              menuItem(strong("Charts"),tabName = "charts", icon = icon("bar-chart"))
+shinyUI(
+  navbarPage(
+    strong("COPD_Demo"),
+    position = "static-top",
+    windowTitle = "COPD_Demo",
+    collapsible = TRUE,
+    theme = shinytheme("cerulean"),
+    tabPanel(strong("Home")),
+    tabPanel(strong("Data")),
+    tabPanel(strong("Prediction")),
+    tabPanel(strong("Classification"))
   )
 )
 
@@ -29,33 +28,5 @@ sidebar <- dashboardSidebar(
 
 
 
-
-body <- dashboardBody(
-  useShinyjs(),
-  fluidRow(column(12,
-    tabItems(
-      
-      tabItem(tabName = "home", h2("MAIN MENU") ),
-      
-      tabItem(tabName = "data", h2("DATA") ,
-              fluidRow(column(12,
-                              div(style="height: 60px;",
-                                  fileInput('file_data', 'Choose CSV File',
-                                            accept=c('text/csv','text/comma-separated-values,text/plain','.csv'))
-                              )
-              ))
-              ),
-      
-      tabItem(tabName = "charts", h2("CHARTS") )
-      
-    )
-  ))
-)
-
-
-
-
-
-dashboardPage(header, sidebar, body, skin = "green")
 
 
