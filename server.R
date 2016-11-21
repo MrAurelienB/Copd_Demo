@@ -12,32 +12,50 @@ library(shiny)
 # Define server logic required to draw a histogram
 shinyServer(function(input, output) {
   
-  data <- data.frame(0,0)
+  code_feat <- list()
   
   output$data_contents <- renderUI({
-    inFile <- input$data_file
+    inFile <<- input$data_file
     if (is.null(inFile))
       return(NULL)
     
-    data <- read.csv(inFile$datapath, header = input$header, sep = input$sep)
-    choices <- c()
-    if(input$data_visualize == "Hosp.Rec"){
-      for( i in 1:(length(data[,1])) ){choices<-c(choices,(paste("record ",i)))}
-      radioButtons("patient", label="Choose a patient record",choices=choices)
-    } else if (input$data_visualize == "feat"){
-      for( i in 1:(length(data[1,])) ){choices<-c(choices,(colnames(data)[i]=i))}
-      radioButtons("feature", label="Choose a feature",choices=choices)
-    }
+    data <<- read.csv(inFile$datapath, header = input$header, sep = ',')
+    if( length(data[1,]) == 1 )
+      data <<- read.csv(inFile$datapath, header = input$header, sep = ';')
+    if( length(data[1,]) == 1 )
+      data <<- read.csv(inFile$datapath, header = input$header, sep = '\t')
     
+    code_record <- as.list(1:(length(data[,1])))
+    names(code_record) <- paste(as.list(rep("Record",length(data[1,]))),as.character(code_record))
+    code_feat <<- as.list(1:(length(data[1,])))
+    names(code_feat) <<- as.list(colnames(data))
+    
+    if(input$data_visualize == "Hosp.Rec"){
+      radioButtons("patient", label="Choose a patient record",choices=code_record)
+    } else if (input$data_visualize == "feat"){
+      radioButtons("feature", label="Choose a feature",choices=code_feat)
+    }
   })
   
-  output$data_stat <- renderPlot({
-    if( input$data_visualize == "feat" ){
-      #plot( data[,c("age")] )
-      #plot( data[,strtoi(input$feature)] )
-      plot( data[,18] )
-      #input$feature
-    }
+  observeEvent(input$data_file, {
+    output$data_stat <- renderPlot({
+      index_feat <- strtoi(input$feature)
+      index_event <- strtoi(input$event)
+      if( input$data_visualize == "feat" ){
+        if( length(unique(data[,index_feat])) > 5 ){
+          hist(data[,index_feat],col="lightblue",xlab=colnames(data)[index_feat],main=paste("Histogram of ",colnames(data)[index_feat]))
+        }else{
+          #barplot( table( data[,index_feat] ),col="lightblue",xlab=colnames(data[,strtoi(input$feature)]),ylab=colnames(data)[,strtoi(input$event)])
+          plot( factor(data[,index_feat]) ~ factor(data[,index_event]),col=c("cadetblue2","lightblue"),xlab=colnames(data)[index_feat],ylab=colnames(data)[index_event],main="")
+        }
+      }
+    })
+  })
+  
+  observeEvent(input$data_file, {
+    output$data_event_choice <- renderUI({
+      selectInput("event",NULL,code_feat)
+    })
   })
   
 })

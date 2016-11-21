@@ -17,7 +17,22 @@ shinyUI(
     windowTitle = "COPD_Demo",
     collapsible = TRUE,
     theme = shinytheme("cerulean"),
-    tabPanel(strong("Home")),
+    tabPanel(
+      strong("Home"),
+      fluidRow(
+        column(12,
+               h1("Web Application for COPD prediction", align = "center"),
+               tags$hr(),
+               h1("Application Web pour prédiction liée à la MPOC", align = "center"),
+               tags$h6(align="center",
+                       "UdeS - Faculté des Sciences - Département Informatique - ",
+                       HTML(' <a href="http://info.usherbrooke.ca/Prospectus" target="_blank">Prospectus</a> '),br(),
+                       "CHUS - Centre Hospitalier Universitaire de Sherbrooke - ...",br(),
+                       "GPL licence - 2016"
+               )
+        )
+      )
+    ),
     tabPanel(
       strong("Data"),
       fluidRow(
@@ -25,12 +40,19 @@ shinyUI(
           fileInput("data_file", "Choose CSV File",
                     accept = c("text/csv","text/comma-separated-values,text/plain",".csv")
           ),
-          tags$hr(),
           checkboxInput('header', 'Header', TRUE),
-          radioButtons('sep', 'Separator',c(Comma=',',Semicolon=';',Tab='\t'),','),
+          tags$hr(),
+          #radioButtons('sep', 'Separator',c(Comma=',',Semicolon=';',Tab='\t'),','),
+          wellPanel("Event of Interest",
+                    tableOutput("data_event_choice")
+          ),
           selectInput("data_visualize",NULL,
-                      c("Features" = "feat","Hospitaliuzation Records" = "Hosp.Rec")),
-          tableOutput("data_contents")
+                      c("Features" = "feat","Hospitaliuzation Records" = "Hosp.Rec"),
+                      selected="feat"),
+          wellPanel("Select one object",
+                    style = "overflow-y:scroll; max-height: 400px; float:left",
+                    tableOutput("data_contents")
+          )
         ),
         column(8,
           plotOutput("data_stat")   
