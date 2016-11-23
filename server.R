@@ -8,6 +8,7 @@
 #
 
 library(shiny)
+library(ggplot2)
 
 # Define server logic required to draw a histogram
 shinyServer(function(input, output) {
@@ -43,10 +44,17 @@ shinyServer(function(input, output) {
       index_event <- strtoi(input$event)
       if( input$data_visualize == "feat" ){
         if( length(unique(data[,index_feat])) > 5 ){
-          hist(data[,index_feat],col="lightblue",xlab=colnames(data)[index_feat],main=paste("Histogram of ",colnames(data)[index_feat]))
+          #hist(data[,index_feat],col="lightblue",xlab=colnames(data)[index_feat],main=paste("Histogram of ",colnames(data)[index_feat]))
+          m <- ggplot(data, aes(x=data[,index_feat]))+geom_histogram(aes(fill=..count..))
+          m <- m + labs(x=colnames(data)[index_feat]) + labs(title=paste("Histogram of",colnames(data)[index_feat]))
+          m + scale_fill_gradient("Count",low="blue4",high="lightblue")      
         }else{
           #barplot( table( data[,index_feat] ),col="lightblue",xlab=colnames(data[,strtoi(input$feature)]),ylab=colnames(data)[,strtoi(input$event)])
-          plot( factor(data[,index_feat]) ~ factor(data[,index_event]),col=c("cadetblue2","lightblue"),xlab=colnames(data)[index_feat],ylab=colnames(data)[index_event],main="")
+          #plot( factor(data[,index_feat]) ~ factor(data[,index_event]),col=c("cadetblue2","lightblue"),xlab=colnames(data)[index_feat],ylab=colnames(data)[index_event],main="")
+          m <- qplot(factor(data[,index_event]), data=data, geom="bar", fill=factor(data[,index_feat]))
+          m <- m + labs(title=paste("Count of '",colnames(data)[index_feat],"' depending on '",colnames(data)[index_event],"'"))
+          m <- m + labs(x=colnames(data)[index_event]) + labs(y="count") + labs(fill=colnames(data)[index_feat])
+          m
         }
       }
     })
