@@ -7,6 +7,8 @@
 #    http://shiny.rstudio.com/
 #
 
+if(!require("plotly")){install.packages("plotly",repo="http://cran.rstudio.com/");require(plotly)}
+
 library(shiny)
 library(shinythemes)
 library(ggplot2)
