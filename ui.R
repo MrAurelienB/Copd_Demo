@@ -9,6 +9,10 @@
 
 library(shiny)
 library(shinythemes)
+library(ggplot2)
+library(survival)
+library(plotly)
+library(RColorBrewer)
 
 shinyUI(
   navbarPage(
@@ -17,6 +21,7 @@ shinyUI(
     windowTitle = "COPD_Demo",
     collapsible = TRUE,
     theme = shinytheme("cerulean"),
+    #---HOME PANEL
     tabPanel(
       strong("Home"),
       tags$style(type="text/css",
@@ -37,6 +42,7 @@ shinyUI(
         )
       )
     ),
+    #---DATA PANEL
     tabPanel(
       strong("Data"),
       tags$style(type="text/css",
@@ -44,6 +50,7 @@ shinyUI(
                  ".shiny-output-error:before { visibility: hidden; }"
       ),
       fluidRow(
+        #---PARAMETERS SELECTION
         column(4,
           fileInput("data_file", "Choose CSV File",
                     accept = c("text/csv","text/comma-separated-values,text/plain",".csv")
@@ -52,25 +59,30 @@ shinyUI(
           checkboxInput('patientID', 'Patient ID', FALSE),
           tags$hr(),
           #radioButtons('sep', 'Separator',c(Comma=',',Semicolon=';',Tab='\t'),','),
-          wellPanel("Event of Interest",
+          wellPanel(strong("Event of Interest"),
                     tableOutput("data_event_choice")
           ),
-          wellPanel("Survival Time",
+          wellPanel(strong("Survival Time"),
                     tableOutput("data_stime_choice")
           ),
-          selectInput("data_visualize",NULL,
-                      c("Features" = "feat","Hospitaliuzation Records" = "Hosp.Rec"),
-                      selected="feat"),
-          wellPanel("Select one object",
+          wellPanel(
+            strong("Feature or Hospitalization Records"),
+            selectInput("data_visualize",NULL,
+                        c("Features" = "feat","Hospitaliuzation Records" = "Hosp.Rec"),
+                        selected="feat")
+          ),
+          wellPanel(strong("Select one object"),
                     tableOutput("data_contents")
           )
         ),
+        #---PLOT OUTPUT
         column(8,
-          plotOutput("data_stat"),
+          plotlyOutput("data_stat"),
           plotOutput("survival_curve")
         )
       )
     ),
+    #---PREDICTION PANEL
     tabPanel(
       strong("Prediction"),
       tags$style(type="text/css",
@@ -78,19 +90,40 @@ shinyUI(
                  ".shiny-output-error:before { visibility: hidden; }"
       ),
       fluidRow(
+        #---PARAMETERS SELECTION--1
         column(4,
-            wellPanel("Select a Model",
+            wellPanel(strong("Select a Model"),
               selectInput("model",NULL,
-                          c("Cox Model"="coxmodel","Our Model"="ourmodel"),
+                          c("Cox Model"="coxmodel","..."="..."),
                           selected="coxmodel")
             ),
-            wellPanel("k-fold Cross-Validation",
+            wellPanel(strong("k-fold Cross-Validation"),
               selectInput("k-folds",NULL,1:5)
             )
         ),
-        column(8)
+        #---PLOT OUTPUT--1
+        column(8,
+            plotlyOutput("model_coeff")       
+        )
+      ),
+      br(),
+      fluidRow(
+        #---PARAMETERS SELECTION--2
+        column(4,
+            wellPanel(
+              strong("Choose a patient record"),
+              tableOutput("patient_pred_output")
+            )
+        ),
+        #---PLOT OUTPUT--2
+        column(8,
+            wellPanel(
+              strong("Risk value = 42")
+            )
+        )
       )
     ),
+    #---CLASSFICATION PANEL
     tabPanel(strong("Classification"))
   )
 )
