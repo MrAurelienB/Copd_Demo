@@ -7,14 +7,15 @@
 #    http://shiny.rstudio.com/
 #
 
-if(!require("plotly")){install.packages("plotly",repo="http://cran.rstudio.com/");require(plotly)}
-
 library(shiny)
 library(shinythemes)
-library(ggplot2)
 library(survival)
+library(survminer)
+library(ggplot2)
+library(GGally)
 library(plotly)
 library(RColorBrewer)
+
 
 shinyUI(
   navbarPage(
@@ -98,10 +99,10 @@ shinyUI(
               selectInput("model",NULL,
                           c("Cox Model"="coxmodel","..."="..."),
                           selected="coxmodel")
-            ),
-            wellPanel(strong("k-fold Cross-Validation"),
-              selectInput("k-folds",NULL,1:5)
             )
+            #wellPanel(strong("k-fold Cross-Validation"),
+            #  selectInput("k-folds",NULL,1:5)
+            #)
         ),
         #---PLOT OUTPUT--1
         column(8,
@@ -120,8 +121,9 @@ shinyUI(
         #---PLOT OUTPUT--2
         column(8,
             wellPanel(
-              strong("Risk value = 42")
-            )
+              strong(textOutput("risk_score_output"))
+            ),
+             plotlyOutput("survival_curve_output")
         )
       )
     ),

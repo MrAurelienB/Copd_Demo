@@ -7,19 +7,33 @@
 #    http://shiny.rstudio.com/
 #
 
+# Define server logic required to draw a histogram
+
 library(shiny)
+library(shinythemes)
 library(survival)
 library(survminer)
 library(ggplot2)
+library(GGally)
 library(plotly)
 library(RColorBrewer)
 
-# Define server logic required to draw a histogram
 shinyServer(function(input, output) {
   
+  #---contains the list of features
   code_feat <- list()
+  
+  #---contains the list of patients
   code_record <- list()
+  
+  #---contains the data matrix
   copd <- NULL
+  
+  #---contain the cox-model prediction containing the risks score
+  cox_prediction <- NULL
+  
+  #---contains the cox-model
+  mod.cox <- NULL
   
   observeEvent({
     input$data_file
@@ -78,11 +92,13 @@ shinyServer(function(input, output) {
       index_event <- strtoi(input$event)
       if( input$data_visualize == "feat" ){
         if( length(unique(copd[,index_feat])) > 5 ){
-          m <- ggplot(copd,aes(x=copd[,index_feat],fill=copd[,index_feat]))+geom_histogram()
+          #---plot the histogram
+          m <- ggplot(copd,aes(x=copd[,index_feat],fill=copd[,index_feat]))+geom_histogram( )
           m <- m + labs(x=colnames(copd)[index_feat]) + labs(title=paste("Histogram of",colnames(copd)[index_feat]))
           m <- m + scale_fill_gradient("Count",low="blue4",high="lightblue")
           ggplotly(m,tooltip=c("count"))
         }else{
+          #---plot a barplot
           x <- as.factor(copd[,index_event])
           y <- as.factor(copd[,index_feat])
           count <- as.vector(table(y,x))
@@ -171,18 +187,60 @@ shinyServer(function(input, output) {
       index_event <- strtoi(input$event)
       if( input$model == "coxmodel" ){
         surv_obj <- Surv(copd[,index_time],copd[,index_event]==1)
-        mod.cox <- coxph(surv_obj~.,data=copd[,-c(index_time,index_event)])
+        mod.cox <<- coxph(surv_obj~.,data=copd[,-c(index_time,index_event)])
+        cox_prediction <<- predict(mod.cox,type="risk",se.fit=TRUE)
         x <- as.data.frame(mod.cox$coefficients)
         dtf <- data.frame(x = rownames(x),y = x[,1])
         n <- length(dtf$x)
         plotly_cols <- colorRampPalette(brewer.pal(9,"Blues"))(2*n)
-        plot_ly(dtf,x=dtf$x,y=dtf$y,text=paste("Feature: ",dtf$x),marker=list(color=plotly_cols[(n):(2*n)]),showlegend=FALSE)
+        m <- plot_ly(dtf,x=dtf$x,y=dtf$y,text=paste("Feature: ",dtf$x),marker=list(color=plotly_cols[(n):(2*n)]),showlegend=FALSE)
+        m <- layout(m,title = "Estimated Coefficients for Cox-model")
+        m
       }
     })
   })
   
+  #---print the risk score of a patient
+  observeEvent({
+    input$data_file
+    input$event
+    input$surv_time
+    input$patient_pred
+  },
+  {
+    output$risk_score_output <- renderText({
+      if( input$model == "coxmodel" ){
+        paste("Risk Score = ",round(cox_prediction$fit[input$patient_pred],4))
+      }else{
+        "You must select a valid model"
+      }
+    })
+  })
   
- 
-  
+  #---plot the survival curve for a patient
+  observeEvent({
+    input$data_file
+    input$event
+    input$surv_time
+    input$patient_pred
+  },
+  {
+    output$survival_curve_output <- renderPlotly({
+      inFile <<- input$data_file
+      if (is.null(inFile))
+        return(NULL)
+      
+      if( input$model == "coxmodel" ){
+        index_patient <- strtoi(input$patient_pred)
+        surv.fit <- survfit(mod.cox,newdata=data.frame(copd[index_patient,]))
+        # xlab="Time",ylab="Survival",main=paste("Survival curve for record",input$patient_pred),col="blue",lwd=2)
+        title <- paste("Survival probability for Patient",index_patient,"with Cox-model")
+        m <- ggsurv(surv.fit,plot.cens=FALSE,surv.col="blue",size.est=0.5,size.ci=0.2,xlab="Time",ylab="Survival Probability",main=title)
+        ggplotly(m)
+      }
+      
+    })
+  })
+
   
 })
