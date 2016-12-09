@@ -71,7 +71,7 @@ shinyServer(function(input, output) {
       names(code_feat) <<- as.list(colnames(copd))
       
       if(input$data_visualize == "Hosp.Rec"){
-        selectInput("patient",NULL,choices=code_record)
+        selectInput("patient_stat",NULL,choices=code_record)
       } else if (input$data_visualize == "feat"){
         selectInput("feature",NULL,choices=code_feat)
       }
@@ -118,6 +118,30 @@ shinyServer(function(input, output) {
           m <- m + labs(x=colnames(copd)[index_event]) + labs(y="count") + labs(fill=colnames(copd)[index_feat])
           ggplotly(m,tooltip=c("y"))
         }
+      }
+    })
+  })
+  
+  #---print the profile of a patient
+  observeEvent({
+    input$data_file
+    input$patientID
+    input$patient_stat
+  },
+  {
+    output$patient_info_output <- renderText({
+      inFile <<- input$data_file
+      if (is.null(inFile))
+        return(NULL)
+      
+      index_time <- strtoi(input$surv_time)
+      index_event <- strtoi(input$event)
+      index_patient <- strtoi(input$patient_stat)
+      if( input$data_visualize == "Hosp.Rec" ){
+        line1 <- paste("Patient",index_patient,":")
+        line2 <- paste("Event :",copd[index_patient,index_event])
+        line3 <- paste("Survival Time :",copd[index_patient,index_time])
+        paste(line1,line2,line3,sep="\n")
       }
     })
   })

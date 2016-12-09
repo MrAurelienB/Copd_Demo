@@ -80,6 +80,7 @@ shinyUI(
         ),
         #---PLOT OUTPUT
         column(8,
+          strong(textOutput("patient_info_output")),
           plotlyOutput("data_stat"),
           plotOutput("survival_curve")
         )
