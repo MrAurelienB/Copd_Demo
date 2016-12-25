@@ -146,6 +146,21 @@ shinyServer(function(input, output) {
     })
   })
   
+  #---select input to choose the features to apply a model
+  observeEvent({
+    input$data_file
+    input$patientID
+    input$event
+    input$surv_time
+  },
+  {output$data_features_choice <- renderUI({
+    index_time <- strtoi(input$surv_time)
+    index_event <- strtoi(input$event)
+    code_feat_mod <- code_feat[-c(index_time,index_event)]
+    selectInput("features_for_model",NULL,choices=code_feat_mod,multiple=TRUE,selected=code_feat_mod)
+  })
+  })
+  
   #---select input to choose the event of interest among the features
   observeEvent({
     input$data_file
@@ -195,7 +210,7 @@ shinyServer(function(input, output) {
       if( input$data_visualize == "feat" && length(unique(copd[,index_feat])) < 5 ){
         surv_obj <- Surv(copd[,index_time],copd[,index_event]==1)
         fit <- survfit(surv_obj~copd[,index_feat] , data = copd )
-        ggsurvplot(fit,risk.table=TRUE,break.time.by=ceiling(max(copd[,index_time])/5),risk.table.y.text=FALSE,risk.table.height=0.35,legend="none")
+        ggsurvplot(fit,risk.table=TRUE,break.time.by=ceiling(max(copd[,index_time])/5),risk.table.y.text=FALSE,risk.table.height=0.35,legend="none",risk.table.col="strata")
       }
     })
   })

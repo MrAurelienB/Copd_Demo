@@ -100,6 +100,9 @@ shinyUI(
               selectInput("model",NULL,
                           c("Cox Model"="coxmodel","..."="..."),
                           selected="coxmodel")
+            ),
+            wellPanel(strong("Select features"),
+                tableOutput("data_features_choice")
             )
             #wellPanel(strong("k-fold Cross-Validation"),
             #  selectInput("k-folds",NULL,1:5)
@@ -129,7 +132,13 @@ shinyUI(
       )
     ),
     #---CLASSFICATION PANEL
-    tabPanel(strong("Classification"))
+    tabPanel(
+      strong("Classification"),
+      tags$style(type="text/css",
+                ".shiny-output-error { visibility: hidden; }",
+                ".shiny-output-error:before { visibility: hidden; }"
+      )
+    )
   )
 )
 
