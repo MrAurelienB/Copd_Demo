@@ -17,131 +17,127 @@ library(plotly)
 library(RColorBrewer)
 
 
-shinyUI(
-  navbarPage(
-    strong("COPD_Demo"),
-    position = "static-top",
-    windowTitle = "COPD_Demo",
-    collapsible = TRUE,
-    theme = shinytheme("cerulean"),
-    #---HOME PANEL
-    tabPanel(
-      strong("Home"),
-      tags$style(type="text/css",
-                 ".shiny-output-error { visibility: hidden; }",
-                 ".shiny-output-error:before { visibility: hidden; }"
-      ),
-      fluidRow(
-        column(12,
-               h1("Web Application for COPD prediction", align = "center"),
-               tags$hr(),
-               h1("Application Web pour prédiction liée à la MPOC", align = "center"),
-               tags$h6(align="center",
-                       "UdeS - Faculté des Sciences - Département Informatique - ",
-                       HTML(' <a href="http://info.usherbrooke.ca/Prospectus" target="_blank">Prospectus</a> '),br(),
-                       "CHUS - Centre Hospitalier Universitaire de Sherbrooke - ...",br(),
-                       "GPL licence - 2016"
-               )
-        )
-      )
-    ),
-    #---DATA PANEL
-    tabPanel(
-      strong("Data"),
-      tags$style(type="text/css",
-                 ".shiny-output-error { visibility: hidden; }",
-                 ".shiny-output-error:before { visibility: hidden; }"
-      ),
-      fluidRow(
-        #---PARAMETERS SELECTION
-        column(4,
-          fileInput("data_file", "Choose CSV File",
-                    accept = c("text/csv","text/comma-separated-values,text/plain",".csv")
-          ),
-          checkboxInput('header', 'Header', TRUE),
-          checkboxInput('patientID', 'Patient ID', FALSE),
-          tags$hr(),
-          #radioButtons('sep', 'Separator',c(Comma=',',Semicolon=';',Tab='\t'),','),
-          wellPanel(strong("Event of Interest"),
-                    tableOutput("data_event_choice")
-          ),
-          wellPanel(strong("Survival Time"),
-                    tableOutput("data_stime_choice")
-          ),
-          wellPanel(
-            strong("Feature or Hospitalization Records"),
-            selectInput("data_visualize",NULL,
-                        c("Features" = "feat","Hospitaliuzation Records" = "Hosp.Rec"),
-                        selected="feat")
-          ),
-          wellPanel(strong("Select one object"),
-                    tableOutput("data_contents")
-          )
-        ),
-        #---PLOT OUTPUT
-        column(8,
-          strong(textOutput("patient_info_output")),
-          plotlyOutput("data_stat"),
-          plotOutput("survival_curve")
-        )
-      )
-    ),
-    #---PREDICTION PANEL
-    tabPanel(
-      strong("Prediction"),
-      tags$style(type="text/css",
-                 ".shiny-output-error { visibility: hidden; }",
-                 ".shiny-output-error:before { visibility: hidden; }"
-      ),
-      fluidRow(
-        #---PARAMETERS SELECTION--1
-        column(4,
-            wellPanel(strong("Select a Model"),
-              selectInput("model",NULL,
-                          c("Cox Model"="coxmodel","..."="..."),
-                          selected="coxmodel")
-            ),
-            wellPanel(strong("Select features"),
-                tableOutput("data_features_choice")
-            )
-            #wellPanel(strong("k-fold Cross-Validation"),
-            #  selectInput("k-folds",NULL,1:5)
-            #)
-        ),
-        #---PLOT OUTPUT--1
-        column(8,
-            plotlyOutput("model_coeff")       
-        )
-      ),
-      br(),
-      fluidRow(
-        #---PARAMETERS SELECTION--2
-        column(4,
-            wellPanel(
-              strong("Choose a patient record"),
-              tableOutput("patient_pred_output")
-            )
-        ),
-        #---PLOT OUTPUT--2
-        column(8,
-            wellPanel(
-              strong(textOutput("risk_score_output"))
-            ),
-             plotlyOutput("survival_curve_output")
-        )
-      )
-    ),
-    #---CLASSFICATION PANEL
-    tabPanel(
-      strong("Classification"),
-      tags$style(type="text/css",
-                ".shiny-output-error { visibility: hidden; }",
-                ".shiny-output-error:before { visibility: hidden; }"
-      )
+# display parameters
+width <- 12
+leftWidth <- 3
+rightWidth <- 9
+
+###---HOME---PANEL
+tabPanel1 <- tabPanel(
+  strong("Home"),
+  tags$style(type="text/css",
+             ".shiny-output-error { visibility: hidden; }",
+             ".shiny-output-error:before { visibility: hidden; }"
+  ),
+  fluidRow(
+    column(width,
+           h1("Web Application for COPD prediction", align = "center"),
+           tags$hr(),
+           h1("Application Web pour prédiction liée à la MPOC", align = "center"),
+           tags$h6(align="center",
+                   "UdeS - Faculté des Sciences - Département Informatique - ",
+                   HTML(' <a href="http://info.usherbrooke.ca/Prospectus" target="_blank">Prospectus</a> '),br(),
+                   "CHUS - Centre Hospitalier Universitaire de Sherbrooke - ...",br(),
+                   "GPL licence - 2016"
+           )
     )
+  )
+)
+
+###---DATA---PANEL
+tabPanel2 <- tabPanel(
+  strong("Data"),
+  tags$style(type="text/css",
+             ".shiny-output-error { visibility: hidden; }",
+             ".shiny-output-error:before { visibility: hidden; }"
+  ),
+  fluidRow(
+    #---MENU
+    column(leftWidth,
+      fileInput("data_file", "Choose CSV File",
+                accept = c("text/csv","text/comma-separated-values,text/plain",".csv")
+      ),
+      checkboxInput('header', 'Header', TRUE),
+      tags$hr(),
+      strong("Event of interest"),
+      selectInput("inputEventOfInterest",NULL,
+                  c("Readmission"="Readmission","Death"="Death","Readmission OR Death"="Both"),
+                  selected="Readmission"),
+      strong("Feature or Hospitalization Records"),
+      selectInput("dataVisualization",NULL,
+                  c("Features" = "features","Hospitalization Records" = "patients"),
+                  selected="features"),
+      strong("Select a feature"),
+      uiOutput("dataSelection")
+    ),
+    #---PLOT
+    column(rightWidth,
+           tableOutput("patientInfos"),
+           plotlyOutput("dataBarplot"),
+           plotOutput("survivalCurveFeature")
+    )
+  )
+)
+
+###---PREDICTION---PANEL
+tabPanel3 <- tabPanel(
+  strong("Prediction"),
+  tags$style(type="text/css",
+             ".shiny-output-error { visibility: hidden; }",
+             ".shiny-output-error:before { visibility: hidden; }"
+  ),
+  fluidRow(
+    #---Select parameter for prediction
+    column(leftWidth,
+      strong("Select a Model"),
+      selectInput("model",NULL,
+           c("Cox Model"="coxmodel","..."="..."),
+           selected="coxmodel"),
+      strong("Select features"),
+      tableOutput("featureSelectionForPrediction")
+    ),
+    #---prediction plot
+    column(rightWidth,
+      plotlyOutput("modelCoeff") 
+    )
+  ),
+  br(),
+  fluidRow(
+    #---select patient for prediction
+    column(leftWidth,
+      strong("Choose a patient"),
+      tableOutput("patientSelection")
+    ),
+    #---plot patient prediction
+    column(rightWidth,
+      wellPanel(strong(textOutput("riskScore"))),
+      plotlyOutput("survivalCurvePatient")
+    )
+  )
+)
+
+###---CLASSIFICATION---PANEL
+tabPanel4 <- tabPanel(
+  strong("Classification"),
+  tags$style(type="text/css",
+             ".shiny-output-error { visibility: hidden; }",
+             ".shiny-output-error:before { visibility: hidden; }"
   )
 )
 
 
 
-
+###---ASSEMBLE PANELS
+shinyUI(
+  navbarPage(
+    strong("COPD Demo"),
+    position = "static-top",
+    windowTitle = "COPD Demo",
+    collapsible = TRUE,
+    theme = shinytheme("cerulean"),
+    tabPanel1,
+    tabPanel2,
+    tabPanel3,
+    tabPanel4
+  )
+)
