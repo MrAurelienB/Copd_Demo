@@ -23,7 +23,7 @@ leftWidth <- 3
 rightWidth <- 9
 
 ###---HOME---PANEL
-tabPanel1 <- tabPanel(
+tabPanel_Home <- tabPanel(
   strong("Home"),
   tags$style(type="text/css",
              ".shiny-output-error { visibility: hidden; }",
@@ -37,7 +37,7 @@ tabPanel1 <- tabPanel(
            tags$h6(align="center",
                    "UdeS - Faculté des Sciences - Département Informatique - ",
                    HTML(' <a href="http://info.usherbrooke.ca/Prospectus" target="_blank">Prospectus</a> '),br(),
-                   "CHUS - Centre Hospitalier Universitaire de Sherbrooke - ...",br(),
+                   "CHUS - Centre Hospitalier Universitaire de Sherbrooke",br(),
                    "GPL licence - 2016"
            )
     )
@@ -45,7 +45,7 @@ tabPanel1 <- tabPanel(
 )
 
 ###---DATA---PANEL
-tabPanel2 <- tabPanel(
+tabPanel_Data <- tabPanel(
   strong("Data"),
   tags$style(type="text/css",
              ".shiny-output-error { visibility: hidden; }",
@@ -80,7 +80,7 @@ tabPanel2 <- tabPanel(
 )
 
 ###---PREDICTION---PANEL
-tabPanel3 <- tabPanel(
+tabPanel_Prediction <- tabPanel(
   strong("Prediction"),
   tags$style(type="text/css",
              ".shiny-output-error { visibility: hidden; }",
@@ -117,7 +117,7 @@ tabPanel3 <- tabPanel(
 )
 
 ###---CLASSIFICATION---PANEL
-tabPanel4 <- tabPanel(
+tabPanel_Classification <- tabPanel(
   strong("Classification"),
   tags$style(type="text/css",
              ".shiny-output-error { visibility: hidden; }",
@@ -135,9 +135,9 @@ shinyUI(
     windowTitle = "COPD Demo",
     collapsible = TRUE,
     theme = shinytheme("cerulean"),
-    tabPanel1,
-    tabPanel2,
-    tabPanel3,
-    tabPanel4
+    tabPanel_Home,
+    tabPanel_Data,
+    tabPanel_Prediction,
+    tabPanel_Classification
   )
 )
