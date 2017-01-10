@@ -8,6 +8,7 @@
 #
 
 library(shiny)
+library(shinyjs)
 library(shinythemes)
 library(survival)
 library(survminer)
@@ -22,13 +23,18 @@ width <- 12
 leftWidth <- 3
 rightWidth <- 9
 
+
+errorStyle <- tags$style(type="text/css",
+                    ".shiny-output-error { visibility: hidden; }",
+                    ".shiny-output-error:before { visibility: hidden; }")
+htmlTableStyle <- tags$style(type="text/css",
+                             "table {border-collapse: collapse;}",
+                              "td, th {border-bottom: 1px solid #ddd; width: 180px; text-align: center; font-weight: normal;}")
+
 ###---HOME---PANEL
 tabPanel_Home <- tabPanel(
   strong("Home"),
-  tags$style(type="text/css",
-             ".shiny-output-error { visibility: hidden; }",
-             ".shiny-output-error:before { visibility: hidden; }"
-  ),
+  errorStyle,
   fluidRow(
     column(width,
            h1("Web Application for COPD prediction", align = "center"),
@@ -47,10 +53,7 @@ tabPanel_Home <- tabPanel(
 ###---DATA---PANEL
 tabPanel_Data <- tabPanel(
   strong("Data"),
-  tags$style(type="text/css",
-             ".shiny-output-error { visibility: hidden; }",
-             ".shiny-output-error:before { visibility: hidden; }"
-  ),
+  errorStyle,
   fluidRow(
     #---MENU
     column(leftWidth,
@@ -59,22 +62,41 @@ tabPanel_Data <- tabPanel(
       ),
       checkboxInput('header', 'Header', TRUE),
       tags$hr(),
-      strong("Event of interest"),
+      strong("Event of interest (failure)"),
       selectInput("inputEventOfInterest",NULL,
-                  c("Readmission"="Readmission","Death"="Death","Readmission OR Death"="Both"),
-                  selected="Readmission"),
-      strong("Feature or Hospitalization Records"),
-      selectInput("dataVisualization",NULL,
-                  c("Features" = "features","Hospitalization Records" = "patients"),
-                  selected="features"),
-      strong("Select a feature"),
-      uiOutput("dataSelection")
+                  c("Readmission"="Readmission","Death"="Death","Readmission And Death"="Both"),
+                  selected="Both")
     ),
     #---PLOT
     column(rightWidth,
-           tableOutput("patientInfos"),
-           plotlyOutput("dataBarplot"),
-           plotOutput("survivalCurveFeature")
+      dataTableOutput("dataInfos")
+    )
+  )
+)
+
+###---STAT---PANEL
+tabPanel_Stat <- tabPanel(
+  strong("Stat"),
+  errorStyle,
+  htmlTableStyle,
+  fluidRow(
+    shinyjs::useShinyjs(),
+    #---MENU
+    column(leftWidth,
+      strong("Display"),
+      selectInput("dataDisplay",NULL,
+                       c("Features" = "features","Hospitalization Records" = "patients"),
+                       selected="features"),
+      strong("Select a feature"),
+      uiOutput("selectInputFeatures"),
+      strong("Select a record"),
+      uiOutput("selectInputPatients")
+    ),
+    #---PLOT
+    column(rightWidth,
+      htmlOutput("featuresInfos"),
+      plotlyOutput("dataBarplot"),
+      plotOutput("survivalCurveFeature")
     )
   )
 )
@@ -82,10 +104,7 @@ tabPanel_Data <- tabPanel(
 ###---PREDICTION---PANEL
 tabPanel_Prediction <- tabPanel(
   strong("Prediction"),
-  tags$style(type="text/css",
-             ".shiny-output-error { visibility: hidden; }",
-             ".shiny-output-error:before { visibility: hidden; }"
-  ),
+  errorStyle,
   fluidRow(
     #---Select parameter for prediction
     column(leftWidth,
@@ -117,12 +136,9 @@ tabPanel_Prediction <- tabPanel(
 )
 
 ###---CLASSIFICATION---PANEL
-tabPanel_Classification <- tabPanel(
-  strong("Classification"),
-  tags$style(type="text/css",
-             ".shiny-output-error { visibility: hidden; }",
-             ".shiny-output-error:before { visibility: hidden; }"
-  )
+tabPanel_Classifier <- tabPanel(
+  strong("Classifier"),
+  errorStyle
 )
 
 
@@ -137,7 +153,8 @@ shinyUI(
     theme = shinytheme("cerulean"),
     tabPanel_Home,
     tabPanel_Data,
+    tabPanel_Stat,
     tabPanel_Prediction,
-    tabPanel_Classification
+    tabPanel_Classifier
   )
 )
