@@ -31,7 +31,9 @@ htmlTableStyle <- tags$style(type="text/css",
                              "table {border-collapse: collapse;}",
                               "td, th {border-bottom: 1px solid #ddd; width: 180px; text-align: center; font-weight: normal;}")
 
+#######################
 ###---HOME---PANEL
+#######################
 tabPanel_Home <- tabPanel(
   strong("Home"),
   errorStyle,
@@ -50,7 +52,9 @@ tabPanel_Home <- tabPanel(
   )
 )
 
+#######################
 ###---DATA---PANEL
+#######################
 tabPanel_Data <- tabPanel(
   strong("Data"),
   errorStyle,
@@ -74,7 +78,9 @@ tabPanel_Data <- tabPanel(
   )
 )
 
+#######################
 ###---STAT---PANEL
+#######################
 tabPanel_Stat <- tabPanel(
   strong("Stat"),
   errorStyle,
@@ -95,13 +101,16 @@ tabPanel_Stat <- tabPanel(
     #---PLOT
     column(rightWidth,
       htmlOutput("featuresInfos"),
+      htmlOutput("patientsInfos"),
       plotlyOutput("dataBarplot"),
       plotOutput("survivalCurveFeature")
     )
   )
 )
 
+############################
 ###---PREDICTION---PANEL
+############################
 tabPanel_Prediction <- tabPanel(
   strong("Prediction"),
   errorStyle,
@@ -135,15 +144,18 @@ tabPanel_Prediction <- tabPanel(
   )
 )
 
+##############################
 ###---CLASSIFICATION---PANEL
+##############################
 tabPanel_Classifier <- tabPanel(
   strong("Classifier"),
   errorStyle
 )
 
 
-
+#########################
 ###---ASSEMBLE PANELS
+#########################
 shinyUI(
   navbarPage(
     strong("COPD Demo"),

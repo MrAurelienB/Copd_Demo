@@ -182,7 +182,7 @@ shinyServer(function(input, output) {
   },
   {output$dataInfos <- renderDataTable({
     initialCOPD
-  }, options = list(lengthMenu = c(10,25,50,n), pageLength = n))
+  }, options = list(lengthMenu = c(10,25,50,n), pageLength = n ) )
   })
   
   #---print default informations about features
@@ -230,6 +230,17 @@ shinyServer(function(input, output) {
         tableFeatures <- paste(tableFeatures,"</tr></table>")
         text <- paste(text,tableFeatures)
         HTML(text)
+      }
+      })
+    })
+  
+  #---print informations about patients
+  observeEvent(
+    input$inputPatients,
+    {output$patientsInfos <- renderUI({
+      if( input$dataDisplay == "patients" ){
+        index <- strtoi(input$inputPatients)
+        HTML(paste(index,"<br/>",index))
       }
       })
     })
