@@ -26,7 +26,6 @@ shinyServer(function(input, output) {
   
   #---dimensions
   n <- 0
-  df <- 0
   
   #---contains the list of features
   listOfFeatures <- list()
@@ -36,26 +35,25 @@ shinyServer(function(input, output) {
   
   #---the general event of interest 'death', 'readmission', 'both', 'time's
   isDeath <- NULL
-  isReadmission <- NULL
   isBoth <- NULL
   timeDeath <- NULL
-  timeReadmission <- NULL
   timeBoth <- NULL
+  dataDeath <- NULL
+  dataBoth <- NULL
   
-  #---and the current event of interest
+  #---contains the data and the current data
+  patientsID <- NULL
+  initialData <- NULL
+  currentData <- NULL
   currentEvent <- NULL
   currentTime <- NULL
   
-  #---contains the data matrix
-  copd <- NULL
-  initialCOPD <- NULL
+  #---parameters
+  defaultCaterogicalLimit <- 5
   
   #---contains model coefficients ans prediction
   mod.cox <- NULL
   pred.cox <- NULL
-  
-  #---parameters
-  defaultCaterogicalLimit <- 5
   
   #############################
   #------functions
@@ -76,10 +74,14 @@ shinyServer(function(input, output) {
     if( input$inputEventOfInterest == "Death" ){
       currentEvent <<- isDeath
       currentTime <<- timeDeath
+      currentData <<- dataDeath
     }else if( input$inputEventOfInterest == "Both" ){
       currentEvent <<- isBoth
       currentTime <<- timeBoth
+      currentData <<- dataBoth
     }
+    listOfFeatures <<- as.list(1:length(currentData))
+    names(listOfFeatures) <<- as.list(colnames(currentData))
   }
   
   #---create HTML text to display for featuresInfos
@@ -88,8 +90,8 @@ shinyServer(function(input, output) {
     categoricalFeatures <- c()
     numericalFeatures <- c()
     featuresName <- names(listOfFeatures)
-    for( i in 1:df ){
-      lengthFeature <- length(unique(copd[,i]))
+    for( i in 1:(length(currentData[1,])) ){
+      lengthFeature <- length(unique(currentData[,i]))
       if( lengthFeature == 2 )
         binaryFeatures <- c( binaryFeatures , featuresName[i] )
       else if( lengthFeature < defaultCaterogicalLimit )
@@ -97,7 +99,7 @@ shinyServer(function(input, output) {
       else
         numericalFeatures <- c( numericalFeatures , featuresName[i] )
     }
-    text <- paste(strong("Number of features :"),df,br(),
+    text <- paste(strong("Number of features :"),length(currentData[1,]),br(),
                   strong("Number of record :"),n,br(),br())
     maxLenth <- max(length(binaryFeatures),max(length(categoricalFeatures),length(numericalFeatures)))
     #---construct the html table
@@ -136,19 +138,20 @@ shinyServer(function(input, output) {
   
   #---create HTML text to display for patientInfos
   getPatientInfos <- function( index ){
-    text <- paste(strong("Patient"),strong(index),br(),br())
+    psex <- "M"
+    if( currentData$sex[index] == 0 )psex <- "F"
+    text <- paste(strong("Patient"),strong(index),":",patientsID[index],br())
+    text <- paste(text,"Sex :",psex,br(),"Age :",currentData$age[index],br(),br())
     tableFeatures <- tags$table(
       tags$tr(
-        tags$th(strong("Admission")),
-        tags$th(strong("Discharge")),
-        tags$th(strong("LoS")),
-        tags$th(strong("Disease"))
+        tags$th(strong("1st hospitalization LoS")),
+        tags$th(strong("Total COPD-Cause LoS")),
+        tags$th(strong("Total all-Cause LoS"))
       ),
       tags$tr(
-        tags$th("NA"),
-        tags$th("NA"),
-        tags$th("NA"),
-        tags$th("NA")
+        tags$th(currentData$LOS_index[index]),
+        tags$th(currentData$COPD_Cause_LOS[index]),
+        tags$th(currentData$all_Cause_LOS[index])
       )
     )
     text <- paste(text,as.character(tableFeatures))
@@ -167,47 +170,55 @@ shinyServer(function(input, output) {
     if(is.null(inFile))
       return(NULL)
         
-    copd <<- readFile()
-    initialCOPD <<- copd
+    initialData <<- readFile()
     d <- length(copd[1,])
     n <<- length(copd[,1])
       
     #---check if the there is the require features
-    if( d < 7 )
+    if( d < 9 )
       return(NULL)
       
-    df <<- d - 7
-    
     #---save the list of patientsID (in column 1)
     listOfPatients <<- as.list(1:n)
     names(listOfPatients) <<- paste(as.list(rep("Patient",n)),as.character(as.list(copd[,1])))
 
-    #---save event of interest feature (column d-3,d-2,d-1,d)
-    isReadmission <<- copd[,d-5]
-    timeReadmission <<- copd[,d-4]
-    isDeath <<- copd[,d-3]
-    timeDeath <<- copd[,d-2]
-    isBoth <<- copd[,d-1]
-    timeBoth <<- copd[,d]
-      
-    setEventOfInterest()
-
-    copd <<- copd[,-c(1,(d-5):d)]
-
+    #---save the interesting features
+    patientsID <<- initialData[,1]
+    isDeath <<- initialData[,2]
+    timeDeath <<- initialData[,3]
+    isBoth <<- initialData[,4]
+    timeBoth <<- initialData[,5]
+    
+    dataDeath <<- initialData[,-c(1:5)]
+    dataBoth <<- initialData[,-c(1:6)]
+    
     #---save the list of remaining features
-    listOfFeatures <<- as.list(1:length(copd[1,]))
-    names(listOfFeatures) <<- as.list(colnames(copd))
+    listOfFeaturesDeath <<- as.list(1:length(dataDeath))
+    listOfFeaturesBoth <<- as.list(1:length(dataBoth))
+    names(listOfFeaturesDeath) <<- as.list(colnames(dataDeath))
+    names(listOfFeaturesDeath) <<- as.list(colnames(dataDeath))
+    
+    setEventOfInterest()
 
   })
   
-  #---create a ui select input for features
+  #---change currentEvent in reaction to selectInput
   observeEvent(
-    input$data_file,
+    input$inputEventOfInterest,
+    setEventOfInterest(),
+    priority=1
+  )
+  
+  #---create a ui select input for features
+  observeEvent({
+    input$data_file
+    input$inputEventOfInterest
+    },
     {output$selectInputFeatures <- renderUI({
         listOfChoices = c("DEFAULT"="default",listOfFeatures)
         selectInput("inputFeatures",NULL,choices=listOfChoices)
       })
-    })
+    },priority=0)
   
   #---create a ui select input for patients
   observeEvent(
@@ -234,27 +245,27 @@ shinyServer(function(input, output) {
       }
     })
   
-  #---change currentEvent in reaction to selectInput
-  observeEvent({
-    input$data_file
-    input$inputEventOfInterest
-    },
-    setEventOfInterest()
-  )
-  
   #---print data table
   observeEvent({
     input$data_file
     input$inputEventOfInterest
   },
   {output$dataInfos <- renderDataTable({
-    initialCOPD
+    displayData <- NULL
+    if( input$inputEventOfInterest == "Both" ){
+      displayData <- cbind(patientsID,isBoth,timeBoth,currentData)
+    }else if( input$inputEventOfInterest == "Death" ){
+      displayData <- cbind(patientsID,isDeath,timeDeath,currentData)
+    }
+    displayData
   }, options = list(lengthMenu = c(10,25,50,n), pageLength = n ) )
   })
   
   #---print default informations about features
-  observeEvent(
-    input$inputFeatures,
+  observeEvent({
+    input$inputEventOfInterest
+    input$inputFeatures
+    },
     {output$featuresInfos <- renderUI({
       if( input$dataDisplay == "features" && input$inputFeatures == "default" ){
         text <- getFeaturesInfos()
@@ -317,6 +328,8 @@ shinyServer(function(input, output) {
     resultPlot
   })
   })
+  
+  ################################
   
   #---plot survival curve for the selected feature
   observeEvent({
