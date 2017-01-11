@@ -73,19 +73,86 @@ shinyServer(function(input, output) {
   
   #---sets the current event of interest and time depending of the choice
   setEventOfInterest <- function(){
-    if( input$inputEventOfInterest == "Readmission" ){
-      currentEvent <<- isReadmission
-      currentTime <<- timeReadmission
-      #print("set event to : readmission")
-    }else if( input$inputEventOfInterest == "Death" ){
+    if( input$inputEventOfInterest == "Death" ){
       currentEvent <<- isDeath
       currentTime <<- timeDeath
-      #print("set event to : death")
     }else if( input$inputEventOfInterest == "Both" ){
       currentEvent <<- isBoth
       currentTime <<- timeBoth
-      #print("set event to : both")
     }
+  }
+  
+  #---create HTML text to display for featuresInfos
+  getFeaturesInfos <- function(){
+    binaryFeatures <- c()
+    categoricalFeatures <- c()
+    numericalFeatures <- c()
+    featuresName <- names(listOfFeatures)
+    for( i in 1:df ){
+      lengthFeature <- length(unique(copd[,i]))
+      if( lengthFeature == 2 )
+        binaryFeatures <- c( binaryFeatures , featuresName[i] )
+      else if( lengthFeature < defaultCaterogicalLimit )
+        categoricalFeatures <- c( categoricalFeatures , featuresName[i] )
+      else
+        numericalFeatures <- c( numericalFeatures , featuresName[i] )
+    }
+    text <- paste(strong("Number of features :"),df,br(),
+                  strong("Number of record :"),n,br(),br())
+    maxLenth <- max(length(binaryFeatures),max(length(categoricalFeatures),length(numericalFeatures)))
+    #---construct the html table
+    trFeatures <- tagList()
+    trFeatures <- tagList( trFeatures , tags$tr(
+                                    tags$th(strong("Binary (0/1)")),
+                                    tags$th(strong("Categorical <"),strong(defaultCaterogicalLimit)),
+                                    tags$th(strong("Numerical >="),strong(defaultCaterogicalLimit))
+                                  )
+                  )
+    trFeatures <- tagList( trFeatures , tags$tr(
+                                        tags$th(strong(length(binaryFeatures))),
+                                        tags$th(strong(length(categoricalFeatures))),
+                                        tags$th(strong(length(numericalFeatures)))
+                                      )
+                  )
+    for( i in 1:maxLenth ){
+      name1 <- ""; name2 <- ""; name3 <- ""
+      if( !is.na(binaryFeatures[i]) )
+        name1 <- binaryFeatures[i]
+      if( !is.na(categoricalFeatures[i]) )
+        name2 <- categoricalFeatures[i]
+      if( !is.na(numericalFeatures[i]) )
+        name3 <- numericalFeatures[i]
+      trFeatures <- tagList( trFeatures , tags$tr(
+                                          tags$th(name1),
+                                          tags$th(name2),
+                                          tags$th(name3)
+                                        )
+                    )
+    }
+    tableFeatures <- as.character(tags$table(trFeatures))
+    text <- paste(text,tableFeatures)
+    return(text)
+  }
+  
+  #---create HTML text to display for patientInfos
+  getPatientInfos <- function( index ){
+    text <- paste(strong("Patient"),strong(index),br(),br())
+    tableFeatures <- tags$table(
+      tags$tr(
+        tags$th(strong("Admission")),
+        tags$th(strong("Discharge")),
+        tags$th(strong("LoS")),
+        tags$th(strong("Disease"))
+      ),
+      tags$tr(
+        tags$th("NA"),
+        tags$th("NA"),
+        tags$th("NA"),
+        tags$th("NA")
+      )
+    )
+    text <- paste(text,as.character(tableFeatures))
+    return(text)
   }
   
   #################################
@@ -190,45 +257,7 @@ shinyServer(function(input, output) {
     input$inputFeatures,
     {output$featuresInfos <- renderUI({
       if( input$dataDisplay == "features" && input$inputFeatures == "default" ){
-        binaryFeatures <- c()
-        categoricalFeatures <- c()
-        numericalFeatures <- c()
-        for( i in 1:df ){
-          lengthFeature <- length(unique(copd[,i]))
-          if( lengthFeature == 2 ){
-            binaryFeatures <- c( binaryFeatures , names(listOfFeatures[i]) )
-          }else if( lengthFeature < defaultCaterogicalLimit ){
-            categoricalFeatures <- c( categoricalFeatures , names(listOfFeatures[i]) )
-          }else{
-            numericalFeatures <- c( numericalFeatures , names(listOfFeatures[i]) )
-          }
-        }
-        print(binaryFeatures)
-        print(categoricalFeatures)
-        print(numericalFeatures)
-        text <- paste(strong("Number of features :"),df,"<br/>",
-                      strong("Number of record :"),n,"<br/><br/>")
-        maxLenth <- max(length(binaryFeatures),max(length(categoricalFeatures),length(numericalFeatures)))
-        tableFeatures <- paste("<table><tr><th>",strong("Binary (0/1)"),"</th><th>",strong("Categorical <"),strong(defaultCaterogicalLimit),"</th><th>",strong("Numerical >="),strong(defaultCaterogicalLimit),"</th></tr>")
-        tableFeatures <- paste(tableFeatures , "<tr><th>",strong(length(binaryFeatures)),"</th><th>",strong(length(categoricalFeatures)),"</th><th>",strong(length(numericalFeatures)),"</th></tr>")
-        for( i in 1:maxLenth ){
-          tableFeatures <- paste(tableFeatures,"<tr>")
-          if( !is.na(binaryFeatures[i]) )
-            tableFeatures <- paste(tableFeatures,"<th>",binaryFeatures[i],"</th>")
-          else
-            tableFeatures <- paste(tableFeatures,"<th></th>")
-          if( !is.na(categoricalFeatures[i]) )
-            tableFeatures <- paste(tableFeatures,"<th>",categoricalFeatures[i],"</th>")
-          else
-            tableFeatures <- paste(tableFeatures,"<th></th>")
-          if( !is.na(numericalFeatures[i]) )
-            tableFeatures <- paste(tableFeatures,"<th>",numericalFeatures[i],"</th>")
-          else
-            tableFeatures <- paste(tableFeatures,"<th></th>")
-          tableFeatures <- paste(tableFeatures,"</tr>")
-        }
-        tableFeatures <- paste(tableFeatures,"</tr></table>")
-        text <- paste(text,tableFeatures)
+        text <- getFeaturesInfos()
         HTML(text)
       }
       })
@@ -240,7 +269,8 @@ shinyServer(function(input, output) {
     {output$patientsInfos <- renderUI({
       if( input$dataDisplay == "patients" ){
         index <- strtoi(input$inputPatients)
-        HTML(paste(index,"<br/>",index))
+        text <- getPatientInfos(index)
+        HTML(text)
       }
       })
     })
@@ -259,7 +289,8 @@ shinyServer(function(input, output) {
         m <- ggplot(copd,aes(x=feat,fill=feat))+geom_histogram( )
         m <- m + labs(x=colnames(copd)[index_feat]) + labs(title=paste("Histogram of",colnames(copd)[index_feat]))
         m <- m + scale_fill_gradient("Count",low="blue4",high="lightblue")
-        resultPlot <- ggplotly(m,tooltip=c("count"))
+        if( !is.null(m) )
+          resultPlot <- ggplotly(m,tooltip=c("count"))
       }else{
         #---plot a barplot
         x <- as.factor(currentEvent)
@@ -279,7 +310,8 @@ shinyServer(function(input, output) {
         m <- m + geom_bar(stat="identity", position=position_dodge())
         m <- m + labs(title=paste("Count of '",colnames(copd)[index_feat],"' depending on '",input$inputEventOfInterest,"'"))
         m <- m + labs(x=input$inputEventOfInterest) + labs(y="count") + labs(fill=colnames(copd)[index_feat])
-        resultPlot <- ggplotly(m,tooltip=c("y"))
+        if( !is.null(m) )  
+          resultPlot <- ggplotly(m,tooltip=c("y"))
       }
     }
     resultPlot

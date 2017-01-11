@@ -68,7 +68,7 @@ tabPanel_Data <- tabPanel(
       tags$hr(),
       strong("Event of interest (failure)"),
       selectInput("inputEventOfInterest",NULL,
-                  c("Readmission"="Readmission","Death"="Death","Readmission And Death"="Both"),
+                  c("Death"="Death","Readmission And Death"="Both"),
                   selected="Both")
     ),
     #---PLOT
@@ -100,7 +100,7 @@ tabPanel_Stat <- tabPanel(
     ),
     #---PLOT
     column(rightWidth,
-      htmlOutput("featuresInfos"),
+    htmlOutput("featuresInfos"),
       htmlOutput("patientsInfos"),
       plotlyOutput("dataBarplot"),
       plotOutput("survivalCurveFeature")
