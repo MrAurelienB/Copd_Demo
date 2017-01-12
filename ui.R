@@ -41,9 +41,9 @@ tabPanel_Home <- tabPanel(
     column(width,
            h1("Web Application for COPD prediction", align = "center"),
            tags$hr(),
-           h1("Application Web pour prédiction liée à la MPOC", align = "center"),
+           h1("Application Web pour prediction liee a la MPOC", align = "center"),
            tags$h6(align="center",
-                   "UdeS - Faculté des Sciences - Département Informatique - ",
+                   "UdeS - Faculte des Sciences - Departement Informatique - ",
                    HTML(' <a href="http://info.usherbrooke.ca/Prospectus" target="_blank">Prospectus</a> '),br(),
                    "CHUS - Centre Hospitalier Universitaire de Sherbrooke",br(),
                    "GPL licence - 2016"
@@ -65,6 +65,8 @@ tabPanel_Data <- tabPanel(
                 accept = c("text/csv","text/comma-separated-values,text/plain",".csv")
       ),
       checkboxInput('header', 'Header', TRUE),
+      tags$hr(),
+      actionLink("defaultData","Load Default COPD-Data"),
       tags$hr(),
       strong("Event of interest (failure)"),
       selectInput("inputEventOfInterest",NULL,
@@ -149,7 +151,17 @@ tabPanel_Prediction <- tabPanel(
 ##############################
 tabPanel_Classifier <- tabPanel(
   strong("Classifier"),
-  errorStyle
+  errorStyle,
+  fluidRow(
+    column(leftWidth,
+      strong("Select a classifier"),
+      selectInput("classificationMethod",NULL,
+                   c("k-nn" = "knn","SVM" = "svm"))
+      ),
+    column(rightWidth
+      
+    )
+  )
 )
 
 

@@ -60,13 +60,45 @@ shinyServer(function(input, output) {
   #############################
   
   #---read the data file
-  readFile <- function(){
-    copd <<- read.csv(inFile$datapath, header = input$header, sep = ',')
-    if( length(copd[1,]) == 1 )
-      copd <<- read.csv(inFile$datapath, header = input$header, sep = ';')
-    if( length(copd[1,]) == 1 )
-      copd <<- read.csv(inFile$datapath, header = input$header, sep = '\t')
-    return(copd)
+  readFile <- function( name ){
+    mydata <- read.csv(name, header = input$header, sep = ',')
+    if( length(mydata[1,]) == 1 )
+      mydata <- read.csv(name, header = input$header, sep = ';')
+    if( length(mydata[1,]) == 1 )
+      mydata <- read.csv(name, header = input$header, sep = '\t')
+    return(mydata)
+  }
+  
+  #---set the data
+  setData <- function(){
+    d <- length(initialData[1,])
+    n <<- length(initialData[,1])
+
+    #---check if the there is the require features
+    if( d < 9 )
+      return(NULL)
+    
+    #---save the list of patientsID (in column 1)
+    listOfPatients <<- as.list(1:n)
+    names(listOfPatients) <<- paste(as.list(rep("Patient",n)),as.character(as.list(copd[,1])))
+    
+    #---save the interesting features
+    patientsID <<- initialData[,1]
+    isDeath <<- initialData[,2]
+    timeDeath <<- initialData[,3]
+    isBoth <<- initialData[,4]
+    timeBoth <<- initialData[,5]
+    
+    dataDeath <<- initialData[,-c(1:5)]
+    dataBoth <<- initialData[,-c(1:6)]
+
+    #---save the list of remaining features
+    listOfFeaturesDeath <<- as.list(1:length(dataDeath))
+    listOfFeaturesBoth <<- as.list(1:length(dataBoth))
+    names(listOfFeaturesDeath) <<- as.list(colnames(dataDeath))
+    names(listOfFeaturesDeath) <<- as.list(colnames(dataDeath))
+    
+    setEventOfInterest()
   }
   
   #---sets the current event of interest and time depending of the choice
@@ -170,36 +202,9 @@ shinyServer(function(input, output) {
     if(is.null(inFile))
       return(NULL)
         
-    initialData <<- readFile()
-    d <- length(copd[1,])
-    n <<- length(copd[,1])
-      
-    #---check if the there is the require features
-    if( d < 9 )
-      return(NULL)
-      
-    #---save the list of patientsID (in column 1)
-    listOfPatients <<- as.list(1:n)
-    names(listOfPatients) <<- paste(as.list(rep("Patient",n)),as.character(as.list(copd[,1])))
-
-    #---save the interesting features
-    patientsID <<- initialData[,1]
-    isDeath <<- initialData[,2]
-    timeDeath <<- initialData[,3]
-    isBoth <<- initialData[,4]
-    timeBoth <<- initialData[,5]
+    initialData <<- readFile(inFile$datapath)
+    setData()
     
-    dataDeath <<- initialData[,-c(1:5)]
-    dataBoth <<- initialData[,-c(1:6)]
-    
-    #---save the list of remaining features
-    listOfFeaturesDeath <<- as.list(1:length(dataDeath))
-    listOfFeaturesBoth <<- as.list(1:length(dataBoth))
-    names(listOfFeaturesDeath) <<- as.list(colnames(dataDeath))
-    names(listOfFeaturesDeath) <<- as.list(colnames(dataDeath))
-    
-    setEventOfInterest()
-
   })
   
   #---change currentEvent in reaction to selectInput
@@ -209,9 +214,19 @@ shinyServer(function(input, output) {
     priority=1
   )
   
+  #---load the default data
+  observeEvent(
+    input$defaultData, 
+    {
+    path <- "www/copd_demo_data_csv.csv"
+    initialData <<- readFile(path)
+    setData()
+  })
+  
   #---create a ui select input for features
   observeEvent({
     input$data_file
+    input$defaultData
     input$inputEventOfInterest
     },
     {output$selectInputFeatures <- renderUI({
@@ -221,8 +236,10 @@ shinyServer(function(input, output) {
     },priority=0)
   
   #---create a ui select input for patients
-  observeEvent(
-    input$data_file,
+  observeEvent({
+    input$data_file
+    input$defaultData
+    },
     {output$selectInputPatients <- renderUI({
         selectInput("inputPatients",NULL,choices=listOfPatients)
       })
@@ -248,6 +265,7 @@ shinyServer(function(input, output) {
   #---print data table
   observeEvent({
     input$data_file
+    input$defaultData
     input$inputEventOfInterest
   },
   {output$dataInfos <- renderDataTable({
@@ -294,11 +312,11 @@ shinyServer(function(input, output) {
     resultPlot <- NULL
     if( input$dataDisplay == "features" & input$inputFeatures != "default" ){
       index_feat <- strtoi(input$inputFeatures)
-      feat <- copd[,index_feat]
+      feat <- currentData[,index_feat]
       if( length(unique(feat)) > defaultCaterogicalLimit ){
         #---plot the histogram
-        m <- ggplot(copd,aes(x=feat,fill=feat))+geom_histogram( )
-        m <- m + labs(x=colnames(copd)[index_feat]) + labs(title=paste("Histogram of",colnames(copd)[index_feat]))
+        m <- ggplot(currentData,aes(x=feat,fill=feat))+geom_histogram( )
+        m <- m + labs(x=names(listOfFeatures)[index_feat]) + labs(title=paste("Histogram of",names(listOfFeatures)[index_feat]))
         m <- m + scale_fill_gradient("Count",low="blue4",high="lightblue")
         if( !is.null(m) )
           resultPlot <- ggplotly(m,tooltip=c("count"))
@@ -319,8 +337,8 @@ shinyServer(function(input, output) {
         )
         m <- ggplot(data=dat, aes(x=xx, y=count, fill=yy))
         m <- m + geom_bar(stat="identity", position=position_dodge())
-        m <- m + labs(title=paste("Count of '",colnames(copd)[index_feat],"' depending on '",input$inputEventOfInterest,"'"))
-        m <- m + labs(x=input$inputEventOfInterest) + labs(y="count") + labs(fill=colnames(copd)[index_feat])
+        m <- m + labs(title=paste("Count of '",names(listOfFeatures)[index_feat],"' depending on '",input$inputEventOfInterest,"'"))
+        m <- m + labs(x=input$inputEventOfInterest) + labs(y="count") + labs(fill=names(listOfFeatures)[index_feat])
         if( !is.null(m) )  
           resultPlot <- ggplotly(m,tooltip=c("y"))
       }
@@ -328,8 +346,6 @@ shinyServer(function(input, output) {
     resultPlot
   })
   })
-  
-  ################################
   
   #---plot survival curve for the selected feature
   observeEvent({
@@ -339,10 +355,10 @@ shinyServer(function(input, output) {
     resultPlot <- NULL
     if( input$dataDisplay == "features" & input$inputFeatures != "default" ){
       index_feat <- strtoi(input$inputFeatures)
-      feat <- copd[,index_feat]
+      feat <- currentData[,index_feat]
       if( length(unique(feat)) < defaultCaterogicalLimit ){
         surv_obj <- Surv(currentTime,currentEvent==1)
-        fit <- survfit(surv_obj~copd[,index_feat] , data = copd )
+        fit <- survfit(surv_obj~currentData[,index_feat] , data = currentData )
         resultPlot <- ggsurvplot(fit,risk.table=TRUE,break.time.by=ceiling(max(currentTime)/5),risk.table.y.text=FALSE,risk.table.height=0.35,legend="none",risk.table.col="strata")
       }
     }
@@ -351,8 +367,10 @@ shinyServer(function(input, output) {
   })
   
   #---select input to choose the features to apply a model
-  observeEvent(
-    input$data_file,
+  observeEvent({
+    input$data_file
+    input$defaultData
+    },
     {output$featureSelectionForPrediction <- renderUI({
       selectInput("featuresForPrediction",NULL,choices=listOfFeatures,multiple=TRUE,selected=listOfFeatures)
     })
@@ -361,13 +379,14 @@ shinyServer(function(input, output) {
   #---plot the coefficients for the models
   observeEvent({
     input$data_file
+    input$defaultData
     input$featureForPrediction
     input$inputEventOfInterest
   },
   {output$modelCoeff <- renderPlotly({
     if( input$model == "coxmodel" ){
       surv_obj <- Surv(currentTime,currentEvent==1)
-      mod.cox <<- coxph(surv_obj~.,data=copd)
+      mod.cox <<- coxph(surv_obj~.,data=currentData)
       pred.cox <<- predict(mod.cox,type="risk",se.fit=TRUE)
       x <- as.data.frame(mod.cox$coefficients)
       dtf <- data.frame(x = rownames(x),y = x[,1])
@@ -383,6 +402,7 @@ shinyServer(function(input, output) {
   #---select input to choose a patient
   observeEvent({
     input$data_file
+    input$defaultData
   },
   {output$patientSelection <- renderUI({
     selectInput("patientSelect",NULL,choices=listOfPatients,selected=1)
@@ -392,6 +412,7 @@ shinyServer(function(input, output) {
   #---print the risk score of a patient
   observeEvent({
     input$data_file
+    input$defaultData
     input$featureForPrediction
     input$inputEventOfInterest
     input$model
@@ -409,19 +430,16 @@ shinyServer(function(input, output) {
   #---plot the survival curve for a patient
   observeEvent({
     input$data_file
+    input$defaultData
     input$featureForPrediction
     input$inputEventOfInterest
     input$model
     input$patientSelect
   },
   {output$survivalCurvePatient <- renderPlotly({
-      inFile <<- input$data_file
-      if (is.null(inFile))
-        return(NULL)
-      
       if( input$model == "coxmodel" ){
         index_patient <- strtoi(input$patientSelect)
-        surv.fit <- survfit(mod.cox,newdata=data.frame(copd[index_patient,]))
+        surv.fit <- survfit(mod.cox,newdata=data.frame(currentData[index_patient,]))
         # xlab="Time",ylab="Survival",main=paste("Survival curve for record",input$patient_pred),col="blue",lwd=2)
         title <- paste("Survival probability for Patient",index_patient,"with Cox-model")
         m <- ggsurv(surv.fit,plot.cens=FALSE,surv.col="blue",xlab="Time",ylab="Survival Probability",main=title)
