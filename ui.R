@@ -70,7 +70,7 @@ tabPanel_Data <- tabPanel(
       tags$hr(),
       strong("Event of interest (failure)"),
       selectInput("inputEventOfInterest",NULL,
-                  c("Death"="Death","Readmission And Death"="Both"),
+                  c("Death"="Death","Combined Events (Readmission and Death)"="Both"),
                   selected="Both")
     ),
     #---PLOT
@@ -93,11 +93,11 @@ tabPanel_Stat <- tabPanel(
     column(leftWidth,
       strong("Display"),
       selectInput("dataDisplay",NULL,
-                       c("Features" = "features","Hospitalization Records" = "patients"),
+                       c("Risk Factors" = "features","Patients" = "patients"),
                        selected="features"),
       strong("Select a feature"),
       uiOutput("selectInputFeatures"),
-      strong("Select a record"),
+      strong("Select a patient"),
       uiOutput("selectInputPatients")
     ),
     #---PLOT

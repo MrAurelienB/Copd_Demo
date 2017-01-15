@@ -24,30 +24,27 @@ shinyServer(function(input, output) {
   #------variables
   #############################
   
-  #---dimensions
-  n <- 0
-  
-  #---contains the list of features
-  listOfFeatures <- list()
-  
-  #---contains the list of patients
-  listOfPatients <- list()
-  
-  #---the general event of interest 'death', 'readmission', 'both', 'time's
-  isDeath <- NULL
-  isBoth <- NULL
-  timeDeath <- NULL
-  timeBoth <- NULL
-  dataDeath <- NULL
-  dataBoth <- NULL
-  
-  #---contains the data and the current data
-  patientsID <- NULL
-  initialData <- NULL
-  currentData <- NULL
-  currentEvent <- NULL
-  currentTime <- NULL
-  
+  #---list element that contains the training set objects
+  train <- list(
+    "n" = 0,
+    "listOfFeatures" = list(),
+    "listOfPatients" = list(),
+    "isDeath" = NULL,
+    "isBoth" = NULL,
+    "timeDeath" = NULL,
+    "timeBoth" = NULL,
+    "dataDeath" = NULL,
+    "dataBoth" = NULL,
+    "patientsID" = NULL,
+    "initialData" = NULL,
+    "currentData" = NULL,
+    "currentEvent" = NULL,
+    "currentTime" = NULL,
+    "admission" = NULL,
+    "discharge" = NULL,
+    "disease" = NULL
+  )
+
   #---parameters
   defaultCaterogicalLimit <- 5
   
@@ -71,32 +68,37 @@ shinyServer(function(input, output) {
   
   #---set the data
   setData <- function(){
-    d <- length(initialData[1,])
-    n <<- length(initialData[,1])
+    d <- length(train$initialData[1,])
+    n <- length(train$initialData[,1])
+    train$n <<- n
 
     #---check if the there is the require features
     if( d < 9 )
       return(NULL)
     
-    #---save the list of patientsID (in column 1)
-    listOfPatients <<- as.list(1:n)
-    names(listOfPatients) <<- paste(as.list(rep("Patient",n)),as.character(as.list(copd[,1])))
-    
     #---save the interesting features
-    patientsID <<- initialData[,1]
-    isDeath <<- initialData[,2]
-    timeDeath <<- initialData[,3]
-    isBoth <<- initialData[,4]
-    timeBoth <<- initialData[,5]
+    train$patientsID <<- as.character(train$initialData[,1])
+    train$isDeath <<- train$initialData[,2]
+    train$timeDeath <<- train$initialData[,3]
+    train$isBoth <<- train$initialData[,4]
+    train$timeBoth <<- train$initialData[,5]
     
-    dataDeath <<- initialData[,-c(1:5)]
-    dataBoth <<- initialData[,-c(1:6)]
+    train$admission <<- train$initialData[,6]
+    train$discharge <<- train$initialData[,7]
+    train$disease <<- train$initialData[,8]
+    
+    train$dataDeath <<- train$initialData[,-c(1:8)]
+    train$dataBoth <<- train$initialData[,-c(1:9)]
 
+    #---save the list of patientsID (in column 1)
+    train$listOfPatients <<- as.list(1:n)
+    names(train$listOfPatients) <<- paste(as.list(rep("Patient",n)),as.character(as.list(1:n)),":",as.character(train$patientsID))
+    
     #---save the list of remaining features
-    listOfFeaturesDeath <<- as.list(1:length(dataDeath))
-    listOfFeaturesBoth <<- as.list(1:length(dataBoth))
-    names(listOfFeaturesDeath) <<- as.list(colnames(dataDeath))
-    names(listOfFeaturesDeath) <<- as.list(colnames(dataDeath))
+    train$listOfFeaturesDeath <<- as.list(1:length(train$dataDeath))
+    train$listOfFeaturesBoth <<- as.list(1:length(train$dataBoth))
+    names(train$listOfFeaturesDeath) <<- as.list(colnames(train$dataDeath))
+    names(train$listOfFeaturesDeath) <<- as.list(colnames(train$dataDeath))
     
     setEventOfInterest()
   }
@@ -104,16 +106,16 @@ shinyServer(function(input, output) {
   #---sets the current event of interest and time depending of the choice
   setEventOfInterest <- function(){
     if( input$inputEventOfInterest == "Death" ){
-      currentEvent <<- isDeath
-      currentTime <<- timeDeath
-      currentData <<- dataDeath
+      train$currentEvent <<- train$isDeath
+      train$currentTime <<- train$timeDeath
+      train$currentData <<- train$dataDeath
     }else if( input$inputEventOfInterest == "Both" ){
-      currentEvent <<- isBoth
-      currentTime <<- timeBoth
-      currentData <<- dataBoth
+      train$currentEvent <<- train$isBoth
+      train$currentTime <<- train$timeBoth
+      train$currentData <<- train$dataBoth
     }
-    listOfFeatures <<- as.list(1:length(currentData))
-    names(listOfFeatures) <<- as.list(colnames(currentData))
+    train$listOfFeatures <<- as.list(1:length(train$currentData))
+    names(train$listOfFeatures) <<- as.list(colnames(train$currentData))
   }
   
   #---create HTML text to display for featuresInfos
@@ -121,9 +123,9 @@ shinyServer(function(input, output) {
     binaryFeatures <- c()
     categoricalFeatures <- c()
     numericalFeatures <- c()
-    featuresName <- names(listOfFeatures)
-    for( i in 1:(length(currentData[1,])) ){
-      lengthFeature <- length(unique(currentData[,i]))
+    featuresName <- names(train$listOfFeatures)
+    for( i in 1:(length(train$currentData[1,])) ){
+      lengthFeature <- length(unique(train$currentData[,i]))
       if( lengthFeature == 2 )
         binaryFeatures <- c( binaryFeatures , featuresName[i] )
       else if( lengthFeature < defaultCaterogicalLimit )
@@ -131,8 +133,8 @@ shinyServer(function(input, output) {
       else
         numericalFeatures <- c( numericalFeatures , featuresName[i] )
     }
-    text <- paste(strong("Number of features :"),length(currentData[1,]),br(),
-                  strong("Number of record :"),n,br(),br())
+    text <- paste(strong("Number of features :"),length(train$currentData[1,]),br(),
+                  strong("Number of record :"),train$n,br(),br())
     maxLenth <- max(length(binaryFeatures),max(length(categoricalFeatures),length(numericalFeatures)))
     #---construct the html table
     trFeatures <- tagList()
@@ -171,19 +173,27 @@ shinyServer(function(input, output) {
   #---create HTML text to display for patientInfos
   getPatientInfos <- function( index ){
     psex <- "M"
-    if( currentData$sex[index] == 0 )psex <- "F"
-    text <- paste(strong("Patient"),strong(index),":",patientsID[index],br())
-    text <- paste(text,"Sex :",psex,br(),"Age :",currentData$age[index],br(),br())
+    if( train$currentData$sex[index] == 0 )psex <- "F"
+    text <- paste(strong("Patient"),strong(index),":",train$patientsID[index],br())
+    text <- paste(text,"Sex :",psex,br(),"Age :",train$currentData$age[index],br(),br())
     tableFeatures <- tags$table(
       tags$tr(
+        tags$th(strong("Admission")),
+        tags$th(strong("Discharge")),
+        tags$th(strong("Disease")),
         tags$th(strong("1st hospitalization LoS")),
+        tags$th(strong("Number of Readmission")),
         tags$th(strong("Total COPD-Cause LoS")),
         tags$th(strong("Total all-Cause LoS"))
       ),
       tags$tr(
-        tags$th(currentData$LOS_index[index]),
-        tags$th(currentData$COPD_Cause_LOS[index]),
-        tags$th(currentData$all_Cause_LOS[index])
+        tags$th(train$admission[index]),
+        tags$th(train$discharge[index]),
+        tags$th(train$disease[index]),
+        tags$th(train$currentData$LOS_index[index]),
+        tags$th(train$initialData$number_of_readmission_before_death[index]),
+        tags$th(train$currentData$COPD_Cause_LOS[index]),
+        tags$th(train$currentData$all_Cause_LOS[index])
       )
     )
     text <- paste(text,as.character(tableFeatures))
@@ -202,7 +212,7 @@ shinyServer(function(input, output) {
     if(is.null(inFile))
       return(NULL)
         
-    initialData <<- readFile(inFile$datapath)
+    train$initialData <<- readFile(inFile$datapath)
     setData()
     
   })
@@ -219,7 +229,7 @@ shinyServer(function(input, output) {
     input$defaultData, 
     {
     path <- "www/copd_demo_data_csv.csv"
-    initialData <<- readFile(path)
+    train$initialData <<- readFile(path)
     setData()
   })
   
@@ -230,7 +240,7 @@ shinyServer(function(input, output) {
     input$inputEventOfInterest
     },
     {output$selectInputFeatures <- renderUI({
-        listOfChoices = c("DEFAULT"="default",listOfFeatures)
+        listOfChoices = c("DEFAULT"="default",train$listOfFeatures)
         selectInput("inputFeatures",NULL,choices=listOfChoices)
       })
     },priority=0)
@@ -241,7 +251,7 @@ shinyServer(function(input, output) {
     input$defaultData
     },
     {output$selectInputPatients <- renderUI({
-        selectInput("inputPatients",NULL,choices=listOfPatients)
+        selectInput("inputPatients",NULL,choices=train$listOfPatients)
       })
     })
   
@@ -270,13 +280,31 @@ shinyServer(function(input, output) {
   },
   {output$dataInfos <- renderDataTable({
     displayData <- NULL
-    if( input$inputEventOfInterest == "Both" ){
-      displayData <- cbind(patientsID,isBoth,timeBoth,currentData)
-    }else if( input$inputEventOfInterest == "Death" ){
-      displayData <- cbind(patientsID,isDeath,timeDeath,currentData)
+    if( train$n > 0 ){
+      displayData <- cbind(index=1:train$n,ID=train$patientsID)
     }
+    if( input$inputEventOfInterest == "Both" ){
+      displayData <- cbind(
+        displayData,
+        isEvent=train$isBoth,
+        timeEvent=train$timeBoth
+      )
+    }else if( input$inputEventOfInterest == "Death" ){
+      displayData <- cbind(
+        displayData,
+        isDeath=train$isDeath,
+        timeDeath=train$timeDeath
+      )
+    }
+    displayData <- cbind(
+      displayData,
+      admission=train$admission,
+      discharge=train$discharge,
+      disease=train$disease,
+      train$currentData
+    )
     displayData
-  }, options = list(lengthMenu = c(10,25,50,n), pageLength = n ) )
+  }, options = list(lengthMenu = c(10,25,50,train$n), pageLength = train$n ) )
   })
   
   #---print default informations about features
@@ -312,17 +340,17 @@ shinyServer(function(input, output) {
     resultPlot <- NULL
     if( input$dataDisplay == "features" & input$inputFeatures != "default" ){
       index_feat <- strtoi(input$inputFeatures)
-      feat <- currentData[,index_feat]
+      feat <- train$currentData[,index_feat]
       if( length(unique(feat)) > defaultCaterogicalLimit ){
         #---plot the histogram
-        m <- ggplot(currentData,aes(x=feat,fill=feat))+geom_histogram( )
-        m <- m + labs(x=names(listOfFeatures)[index_feat]) + labs(title=paste("Histogram of",names(listOfFeatures)[index_feat]))
+        m <- ggplot(train$currentData,aes(x=feat,fill=feat))+geom_histogram( )
+        m <- m + labs(x=names(train$listOfFeatures)[index_feat]) + labs(title=paste("Histogram of",names(train$listOfFeatures)[index_feat]))
         m <- m + scale_fill_gradient("Count",low="blue4",high="lightblue")
         if( !is.null(m) )
           resultPlot <- ggplotly(m,tooltip=c("count"))
       }else{
         #---plot a barplot
-        x <- as.factor(currentEvent)
+        x <- as.factor(train$currentEvent)
         y <- as.factor(feat)
         count <- as.vector(table(y,x))
         xx <- c()
@@ -337,8 +365,8 @@ shinyServer(function(input, output) {
         )
         m <- ggplot(data=dat, aes(x=xx, y=count, fill=yy))
         m <- m + geom_bar(stat="identity", position=position_dodge())
-        m <- m + labs(title=paste("Count of '",names(listOfFeatures)[index_feat],"' depending on '",input$inputEventOfInterest,"'"))
-        m <- m + labs(x=input$inputEventOfInterest) + labs(y="count") + labs(fill=names(listOfFeatures)[index_feat])
+        m <- m + labs(title=paste("Count of '",names(train$listOfFeatures)[index_feat],"' depending on '",input$inputEventOfInterest,"'"))
+        m <- m + labs(x=input$inputEventOfInterest) + labs(y="count") + labs(fill=names(train$listOfFeatures)[index_feat])
         if( !is.null(m) )  
           resultPlot <- ggplotly(m,tooltip=c("y"))
       }
@@ -355,11 +383,11 @@ shinyServer(function(input, output) {
     resultPlot <- NULL
     if( input$dataDisplay == "features" & input$inputFeatures != "default" ){
       index_feat <- strtoi(input$inputFeatures)
-      feat <- currentData[,index_feat]
+      feat <- train$currentData[,index_feat]
       if( length(unique(feat)) < defaultCaterogicalLimit ){
-        surv_obj <- Surv(currentTime,currentEvent==1)
-        fit <- survfit(surv_obj~currentData[,index_feat] , data = currentData )
-        resultPlot <- ggsurvplot(fit,risk.table=TRUE,break.time.by=ceiling(max(currentTime)/5),risk.table.y.text=FALSE,risk.table.height=0.35,legend="none",risk.table.col="strata")
+        surv_obj <- Surv(train$currentTime,train$currentEvent==1)
+        fit <- survfit(surv_obj~train$currentData[,index_feat] , data = train$currentData )
+        resultPlot <- ggsurvplot(fit,risk.table=TRUE,break.time.by=ceiling(max(train$currentTime)/5),risk.table.y.text=FALSE,risk.table.height=0.35,legend="none",risk.table.col="strata",risk.table.title = "Number of patient at risk (i.e. alive) by time")
       }
     }
     resultPlot
@@ -372,7 +400,7 @@ shinyServer(function(input, output) {
     input$defaultData
     },
     {output$featureSelectionForPrediction <- renderUI({
-      selectInput("featuresForPrediction",NULL,choices=listOfFeatures,multiple=TRUE,selected=listOfFeatures)
+      selectInput("featuresForPrediction",NULL,choices=train$listOfFeatures,multiple=TRUE,selected=train$listOfFeatures)
     })
   })
   
@@ -385,8 +413,8 @@ shinyServer(function(input, output) {
   },
   {output$modelCoeff <- renderPlotly({
     if( input$model == "coxmodel" ){
-      surv_obj <- Surv(currentTime,currentEvent==1)
-      mod.cox <<- coxph(surv_obj~.,data=currentData)
+      surv_obj <- Surv(train$currentTime,train$currentEvent==1)
+      mod.cox <<- coxph(surv_obj~.,data=train$currentData)
       pred.cox <<- predict(mod.cox,type="risk",se.fit=TRUE)
       x <- as.data.frame(mod.cox$coefficients)
       dtf <- data.frame(x = rownames(x),y = x[,1])
@@ -405,7 +433,7 @@ shinyServer(function(input, output) {
     input$defaultData
   },
   {output$patientSelection <- renderUI({
-    selectInput("patientSelect",NULL,choices=listOfPatients,selected=1)
+    selectInput("patientSelect",NULL,choices=train$listOfPatients,selected=1)
     })
   })
   
@@ -439,7 +467,7 @@ shinyServer(function(input, output) {
   {output$survivalCurvePatient <- renderPlotly({
       if( input$model == "coxmodel" ){
         index_patient <- strtoi(input$patientSelect)
-        surv.fit <- survfit(mod.cox,newdata=data.frame(currentData[index_patient,]))
+        surv.fit <- survfit(mod.cox,newdata=data.frame(train$currentData[index_patient,]))
         # xlab="Time",ylab="Survival",main=paste("Survival curve for record",input$patient_pred),col="blue",lwd=2)
         title <- paste("Survival probability for Patient",index_patient,"with Cox-model")
         m <- ggsurv(surv.fit,plot.cens=FALSE,surv.col="blue",xlab="Time",ylab="Survival Probability",main=title)
