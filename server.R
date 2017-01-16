@@ -403,45 +403,40 @@ shinyServer(function(input, output) {
   
   #---plot the coefficients for the models
   observeEvent({
-    input$data_file
-    input$defaultData
-    input$featureForPrediction
+    input$featuresForPrediction
     input$inputEventOfInterest
     input$model
   },
   {output$modelCoeff <- renderPlotly({
     if( input$model == "coxmodel" ){
+      index_feats <- strtoi(input$featuresForPrediction)
       surv_obj <- Surv(train$currentTime,train$currentEvent==1)
-      mod.cox <<- coxph(surv_obj~.,data=train$currentData)
+      mod.cox <<- coxph(surv_obj~.,data=data.frame(train$currentData[,index_feats]))
       pred.cox <<- predict(mod.cox,type="risk",se.fit=TRUE)
       x <- as.data.frame(mod.cox$coefficients)
       dtf <- data.frame(x = rownames(x),y = x[,1])
       n <- length(dtf$x)
-      print(n)
       plotly_cols <- colorRampPalette(brewer.pal(9,"Blues"))(2*n)
-      m <- plot_ly(dtf,x=dtf$x,y=dtf$y,text=paste("Feature: ",dtf$x),marker=list(color=plotly_cols[(n):(2*n)]),showlegend=FALSE)
+      m <- plot_ly(dtf,x=dtf$x,y=dtf$y,type="bar",text=paste("Feature: ",dtf$x),marker=list(color=plotly_cols[(n):(2*n)]),showlegend=FALSE)
       m <- layout(m,title = "Estimated Coefficients by Cox-model")
       m
     }
   })
-  })
+  },priority=1)
   
   #---select input to choose a patient
   observeEvent({
     input$data_file
     input$defaultData
-    input$model
   },
   {output$patientSelection <- renderUI({
-    selectInput("patientSelect",NULL,choices=train$listOfPatients,selected=1)
+    selectInput("patientSelect",NULL,choices=train$listOfPatients,selected=1,width='100%')
     })
   })
   
   #---print the risk score of a patient
   observeEvent({
-    input$data_file
-    input$defaultData
-    input$featureForPrediction
+    input$featuresForPrediction
     input$inputEventOfInterest
     input$model
     input$patientSelect
@@ -457,9 +452,7 @@ shinyServer(function(input, output) {
   
   #---plot the survival curve for a patient
   observeEvent({
-    input$data_file
-    input$defaultData
-    input$featureForPrediction
+    input$featuresForPrediction
     input$inputEventOfInterest
     input$model
     input$patientSelect
@@ -467,14 +460,13 @@ shinyServer(function(input, output) {
   {output$survivalCurvePatient <- renderPlotly({
       if( input$model == "coxmodel" ){
         index_patient <- strtoi(input$patientSelect)
-        surv.fit <- survfit(mod.cox,newdata=data.frame(train$currentData[index_patient,]))
-        # xlab="Time",ylab="Survival",main=paste("Survival curve for record",input$patient_pred),col="blue",lwd=2)
+        index_feats <- strtoi(input$featuresForPrediction)
+        surv.fit <- survfit(mod.cox,newdata=data.frame(train$currentData[index_patient,index_feats]))
         title <- paste("Survival probability for Patient",index_patient,"with Cox-model")
         m <- ggsurv(surv.fit,plot.cens=FALSE,surv.col="blue",xlab="Time",ylab="Survival Probability",main=title)
         ggplotly(m)
       }
-      
     })
-  })
+  },priority=0)
   
 })
