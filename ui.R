@@ -71,7 +71,7 @@ tabPanel_Data <- tabPanel(
       strong("Event of interest (failure)"),
       selectInput("inputEventOfInterest",NULL,
                   c("Death"="Death","Combined Events (Readmission and Death)"="Both"),
-                  selected="Both")
+                  selected="Both",width='100%')
     ),
     #---PLOT
     column(rightWidth,

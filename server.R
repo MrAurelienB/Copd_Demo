@@ -91,7 +91,7 @@ shinyServer(function(input, output) {
     names(train$listOfPatients) <<- paste(as.list(rep("Patient",n)),as.character(as.list(1:n)),":",as.character(train$patientsID))
     
     setEventOfInterest()
-
+    
   }
   
   #---sets the current event of interest and time depending of the choice
@@ -233,8 +233,6 @@ shinyServer(function(input, output) {
   
   #---create a ui select input for features
   observeEvent({
-    input$data_file
-    input$defaultData
     input$inputEventOfInterest
     input$dataDisplay
     },
@@ -246,9 +244,6 @@ shinyServer(function(input, output) {
   
   #---create a ui select input for patients
   observeEvent({
-    input$data_file
-    input$defaultData
-    input$inputEventOfInterest
     input$dataDisplay
     },
     {output$selectInputPatients <- renderUI({
@@ -401,8 +396,8 @@ shinyServer(function(input, output) {
     input$model
     },
     {output$featuresForModel <- renderUI({
-        selectInput("featuresForPrediction",NULL,choices=train$listOfFeatures,multiple=TRUE,selected=train$listOfFeatures)
-        #selectInput("featuresForPrediction",NULL,choices=list("a"=1,"b"=2))
+        listOfChoices <- as.list(train$listOfFeatures)
+        selectInput("featuresForPrediction",NULL,choices=listOfChoices,multiple=TRUE,selected=listOfChoices)
       })
   })
   
@@ -422,9 +417,10 @@ shinyServer(function(input, output) {
       x <- as.data.frame(mod.cox$coefficients)
       dtf <- data.frame(x = rownames(x),y = x[,1])
       n <- length(dtf$x)
+      print(n)
       plotly_cols <- colorRampPalette(brewer.pal(9,"Blues"))(2*n)
       m <- plot_ly(dtf,x=dtf$x,y=dtf$y,text=paste("Feature: ",dtf$x),marker=list(color=plotly_cols[(n):(2*n)]),showlegend=FALSE)
-      m <- layout(m,title = "Estimated Coefficients for Cox-model")
+      m <- layout(m,title = "Estimated Coefficients by Cox-model")
       m
     }
   })
