@@ -90,13 +90,8 @@ shinyServer(function(input, output) {
     train$listOfPatients <<- as.list(1:n)
     names(train$listOfPatients) <<- paste(as.list(rep("Patient",n)),as.character(as.list(1:n)),":",as.character(train$patientsID))
     
-    #---save the list of remaining features
-    train$listOfFeaturesDeath <<- as.list(1:length(train$dataDeath))
-    train$listOfFeaturesBoth <<- as.list(1:length(train$dataBoth))
-    names(train$listOfFeaturesDeath) <<- as.list(colnames(train$dataDeath))
-    names(train$listOfFeaturesDeath) <<- as.list(colnames(train$dataDeath))
-    
     setEventOfInterest()
+
   }
   
   #---sets the current event of interest and time depending of the choice
@@ -112,6 +107,7 @@ shinyServer(function(input, output) {
     }
     train$listOfFeatures <<- as.list(1:length(train$currentData))
     names(train$listOfFeatures) <<- as.list(colnames(train$currentData))
+    
   }
   
   #---create HTML text to display for featuresInfos
@@ -240,6 +236,7 @@ shinyServer(function(input, output) {
     input$data_file
     input$defaultData
     input$inputEventOfInterest
+    input$dataDisplay
     },
     {output$selectInputFeatures <- renderUI({
         listOfChoices = c("DEFAULT"="default",train$listOfFeatures)
@@ -251,11 +248,14 @@ shinyServer(function(input, output) {
   observeEvent({
     input$data_file
     input$defaultData
+    input$inputEventOfInterest
+    input$dataDisplay
     },
     {output$selectInputPatients <- renderUI({
-        selectInput("inputPatients",NULL,choices=train$listOfPatients)
+        listOfChoices = as.list(train$listOfPatients)
+        selectInput("inputPatients",NULL,choices=train$listOfPatients,width='100%')
       })
-    })
+    },priority=0)
   
   #---disable / enable the selectInput
   observeEvent({
@@ -398,13 +398,12 @@ shinyServer(function(input, output) {
   
   #---select input to choose the features to apply a model
   observeEvent({
-    input$data_file
-    input$defaultData
+    input$model
     },
-    {output$featureSelectionForPrediction <- renderUI({
-      print("select input patient")
-      selectInput("featuresForPrediction",NULL,choices=train$listOfFeatures,multiple=TRUE,selected=train$listOfFeatures)
-    })
+    {output$featuresForModel <- renderUI({
+        selectInput("featuresForPrediction",NULL,choices=train$listOfFeatures,multiple=TRUE,selected=train$listOfFeatures)
+        #selectInput("featuresForPrediction",NULL,choices=list("a"=1,"b"=2))
+      })
   })
   
   #---plot the coefficients for the models
@@ -413,6 +412,7 @@ shinyServer(function(input, output) {
     input$defaultData
     input$featureForPrediction
     input$inputEventOfInterest
+    input$model
   },
   {output$modelCoeff <- renderPlotly({
     if( input$model == "coxmodel" ){
@@ -434,6 +434,7 @@ shinyServer(function(input, output) {
   observeEvent({
     input$data_file
     input$defaultData
+    input$model
   },
   {output$patientSelection <- renderUI({
     selectInput("patientSelect",NULL,choices=train$listOfPatients,selected=1)

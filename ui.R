@@ -25,8 +25,8 @@ rightWidth <- 9
 
 
 errorStyle <- tags$style(type="text/css",
-                    ".shiny-output-error { visibility: hidden; }",
-                    ".shiny-output-error:before { visibility: hidden; }")
+                         ".shiny-output-error { visibility: hidden; }",
+                         ".shiny-output-error:before { visibility: hidden; }")
 htmlTableStyle <- tags$style(type="text/css",
                              "table {border-collapse: collapse;}",
                               "td, th {border-bottom: 1px solid #ddd; width: 180px; text-align: center; font-weight: normal;}")
@@ -124,7 +124,7 @@ tabPanel_Prediction <- tabPanel(
            c("Cox Model"="coxmodel","..."="..."),
            selected="coxmodel"),
       strong("Select features"),
-      uiOutput("featureSelectionForPrediction")
+      uiOutput("featuresForModel")
     ),
     #---prediction plot
     column(rightWidth,
@@ -136,7 +136,7 @@ tabPanel_Prediction <- tabPanel(
     #---select patient for prediction
     column(leftWidth,
       strong("Choose a patient"),
-      tableOutput("patientSelection")
+      uiOutput("patientSelection")
     ),
     #---plot patient prediction
     column(rightWidth,
