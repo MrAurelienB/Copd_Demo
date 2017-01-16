@@ -58,11 +58,7 @@ shinyServer(function(input, output) {
   
   #---read the data file
   readFile <- function( name ){
-    mydata <- read.csv(name, header = input$header, sep = ',')
-    if( length(mydata[1,]) == 1 )
-      mydata <- read.csv(name, header = input$header, sep = ';')
-    if( length(mydata[1,]) == 1 )
-      mydata <- read.csv(name, header = input$header, sep = '\t')
+    mydata <- read.csv(name, header = input$header, sep = ';')
     return(mydata)
   }
   
@@ -152,12 +148,18 @@ shinyServer(function(input, output) {
                   )
     for( i in 1:maxLenth ){
       name1 <- ""; name2 <- ""; name3 <- ""
-      if( !is.na(binaryFeatures[i]) )
-        name1 <- binaryFeatures[i]
-      if( !is.na(categoricalFeatures[i]) )
-        name2 <- categoricalFeatures[i]
-      if( !is.na(numericalFeatures[i]) )
-        name3 <- numericalFeatures[i]
+      if( !is.null(binaryFeatures) ){
+        if( !is.na(binaryFeatures[i]) )
+          name1 <- binaryFeatures[i]
+      }
+      if( !is.null(categoricalFeatures) ){
+        if( !is.na(categoricalFeatures[i]) )
+          name2 <- categoricalFeatures[i]
+      }
+      if( !is.null(numericalFeatures) ){
+        if( !is.na(numericalFeatures[i]) )
+          name3 <- numericalFeatures[i]
+      }
       trFeatures <- tagList( trFeatures , tags$tr(
                                           tags$th(name1),
                                           tags$th(name2),
@@ -400,6 +402,7 @@ shinyServer(function(input, output) {
     input$defaultData
     },
     {output$featureSelectionForPrediction <- renderUI({
+      print("select input patient")
       selectInput("featuresForPrediction",NULL,choices=train$listOfFeatures,multiple=TRUE,selected=train$listOfFeatures)
     })
   })

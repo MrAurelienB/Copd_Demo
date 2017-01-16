@@ -124,7 +124,7 @@ tabPanel_Prediction <- tabPanel(
            c("Cox Model"="coxmodel","..."="..."),
            selected="coxmodel"),
       strong("Select features"),
-      tableOutput("featureSelectionForPrediction")
+      uiOutput("featureSelectionForPrediction")
     ),
     #---prediction plot
     column(rightWidth,
