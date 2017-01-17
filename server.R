@@ -49,8 +49,13 @@ shinyServer(function(input, output) {
   defaultCaterogicalLimit <- 5
   
   #---contains model coefficients ans prediction
-  mod.cox <- NULL
-  pred.cox <- NULL
+  model.Cox <- list(
+    "mod" <- NULL,
+    "pred" <- NULL,
+    "ci" <- NULL,
+    "auc" <- NULL,
+    "mse" <- NULL
+  )
   
   #############################
   #------functions
@@ -84,7 +89,7 @@ shinyServer(function(input, output) {
     train$disease <<- train$initialData[,8]
     
     train$dataDeath <<- train$initialData[,-c(1:8)]
-    train$dataBoth <<- train$initialData[,-c(1:9)]
+    train$dataBoth <<- train$initialData[,-c(1:8)]
 
     #---save the list of patientsID (in column 1)
     train$listOfPatients <<- as.list(1:n)
@@ -202,6 +207,10 @@ shinyServer(function(input, output) {
   #------output and observeEvent
   #################################
   
+  observe({
+    hide(selector = "#navbar li a[data-value=stat]")
+  })
+  
   #---read the file when upload
   observeEvent(
     input$data_file,
@@ -218,39 +227,43 @@ shinyServer(function(input, output) {
   #---change currentEvent in reaction to selectInput
   observeEvent(
     input$inputEventOfInterest,
-    setEventOfInterest(),
-    priority=1
+    setEventOfInterest()
   )
   
   #---load the default data
   observeEvent(
     input$defaultData, 
     {
-    path <- "www/copd_demo_data_csv.csv"
-    train$initialData <<- readFile(path)
+    path_trainingSet <- "www/copd_demo_data_csv.csv"
+    train$initialData <<- readFile(path_trainingSet)
     setData()
   })
   
   #---create a ui select input for features
   observeEvent({
     input$inputEventOfInterest
+    input$defaultData
+    input$data_file
     input$dataDisplay
     },
     {output$selectInputFeatures <- renderUI({
+      print("called")
         listOfChoices = c("DEFAULT"="default",train$listOfFeatures)
-        selectInput("inputFeatures",NULL,choices=listOfChoices)
+        selectInput("inputFeatures",NULL,choices=listOfChoices,width='100%')
       })
-    },priority=0)
+    })
   
   #---create a ui select input for patients
   observeEvent({
+    input$defaultData
+    input$data_file
     input$dataDisplay
     },
     {output$selectInputPatients <- renderUI({
         listOfChoices = as.list(train$listOfPatients)
         selectInput("inputPatients",NULL,choices=train$listOfPatients,width='100%')
       })
-    },priority=0)
+    })
   
   #---disable / enable the selectInput
   observeEvent({
@@ -310,7 +323,7 @@ shinyServer(function(input, output) {
     input$inputFeatures
     },
     {output$featuresInfos <- renderUI({
-      if( input$dataDisplay == "features" && input$inputFeatures == "default" ){
+      if( !is.null(train$currentData) & input$dataDisplay == "features" && input$inputFeatures == "default" ){
         text <- getFeaturesInfos()
         HTML(text)
       }
@@ -321,28 +334,30 @@ shinyServer(function(input, output) {
   observeEvent(
     input$inputPatients,
     {output$patientsInfos <- renderUI({
-      if( input$dataDisplay == "patients" ){
-        index <- strtoi(input$inputPatients)
-        text <- getPatientInfos(index)
-        HTML(text)
+      if( !is.null(train$currentData) ){
+        if( input$dataDisplay == "patients" ){
+          index <- strtoi(input$inputPatients)
+          text <- getPatientInfos(index)
+          HTML(text)
+        }
       }
       })
     })
   
-  #---barplot to visualize data depending on 'event of interest'
+  #---barplot or histogram to visualize data depending on 'event of interest'
   observeEvent({
     input$inputFeatures
   },
   {output$dataBarplot <- renderPlotly({
     resultPlot <- NULL
-    if( input$dataDisplay == "features" & input$inputFeatures != "default" ){
+    if( !is.null(train$currentData) & input$dataDisplay == "features" & input$inputFeatures != "default" ){
       index_feat <- strtoi(input$inputFeatures)
       feat <- train$currentData[,index_feat]
       if( length(unique(feat)) > defaultCaterogicalLimit ){
         #---plot the histogram
-        m <- ggplot(train$currentData,aes(x=feat,fill=feat))+geom_histogram( )
+        m <- ggplot(train$currentData,aes(x=feat,fill=feat))+geom_histogram(aes(fill=..count..))
         m <- m + labs(x=names(train$listOfFeatures)[index_feat]) + labs(title=paste("Histogram of",names(train$listOfFeatures)[index_feat]))
-        m <- m + scale_fill_gradient("Count",low="blue4",high="lightblue")
+        #m <- m + scale_fill_gradient("Count",low="blue4",high="lightblue")
         if( !is.null(m) )
           resultPlot <- ggplotly(m,tooltip=c("count"))
       }else{
@@ -377,28 +392,35 @@ shinyServer(function(input, output) {
     input$inputFeatures
   },
   {output$survivalCurveFeature <- renderPlot({
-    resultPlot <- NULL
-    if( input$dataDisplay == "features" & input$inputFeatures != "default" ){
-      index_feat <- strtoi(input$inputFeatures)
-      feat <- train$currentData[,index_feat]
-      if( length(unique(feat)) < defaultCaterogicalLimit ){
-        surv_obj <- Surv(train$currentTime,train$currentEvent==1)
-        fit <- survfit(surv_obj~train$currentData[,index_feat] , data = train$currentData )
-        resultPlot <- ggsurvplot(fit,risk.table=TRUE,break.time.by=ceiling(max(train$currentTime)/5),risk.table.y.text=FALSE,risk.table.height=0.35,legend="none",risk.table.col="strata",risk.table.title = "Number of patient at risk (i.e. alive) by time")
+    if( !is.null(train$currentData) ){
+      resultPlot <- NULL
+      if( input$dataDisplay == "features" & input$inputFeatures != "default" ){
+        index_feat <- strtoi(input$inputFeatures)
+        feat <- train$currentData[,index_feat]
+        if( length(unique(feat)) < defaultCaterogicalLimit ){
+          surv_obj <- Surv(train$currentTime,train$currentEvent==1)
+          fit <- survfit(surv_obj~train$currentData[,index_feat] , data = train$currentData )
+          resultPlot <- ggsurvplot(fit,risk.table=TRUE,break.time.by=ceiling(max(train$currentTime)/5),risk.table.y.text=FALSE,risk.table.height=0.35,legend="none",risk.table.col="strata",risk.table.title = "Number of patient at risk (i.e. alive) by time")
+        }
       }
+      resultPlot
     }
-    resultPlot
   })
   })
   
   #---select input to choose the features to apply a model
   observeEvent({
     input$model
+    input$defaultData
+    input$data_file
     },
     {output$featuresForModel <- renderUI({
+      if( !is.null(train$currentData) ){
         listOfChoices <- as.list(train$listOfFeatures)
-        selectInput("featuresForPrediction",NULL,choices=listOfChoices,multiple=TRUE,selected=listOfChoices)
-      })
+        checkboxGroupInput("featuresForPrediction",label=NULL,
+                           choices=listOfChoices,selected=listOfChoices,width='100%')
+      }
+    })
   })
   
   #---plot the coefficients for the models
@@ -408,18 +430,20 @@ shinyServer(function(input, output) {
     input$model
   },
   {output$modelCoeff <- renderPlotly({
-    if( input$model == "coxmodel" ){
-      index_feats <- strtoi(input$featuresForPrediction)
-      surv_obj <- Surv(train$currentTime,train$currentEvent==1)
-      mod.cox <<- coxph(surv_obj~.,data=data.frame(train$currentData[,index_feats]))
-      pred.cox <<- predict(mod.cox,type="risk",se.fit=TRUE)
-      x <- as.data.frame(mod.cox$coefficients)
-      dtf <- data.frame(x = rownames(x),y = x[,1])
-      n <- length(dtf$x)
-      plotly_cols <- colorRampPalette(brewer.pal(9,"Blues"))(2*n)
-      m <- plot_ly(dtf,x=dtf$x,y=dtf$y,type="bar",text=paste("Feature: ",dtf$x),marker=list(color=plotly_cols[(n):(2*n)]),showlegend=FALSE)
-      m <- layout(m,title = "Estimated Coefficients by Cox-model")
-      m
+    if( !is.null(train$currentData) & length(input$featuresForPrediction) > 0 ){
+      if( input$model == "coxmodel" ){
+        index_feats <- strtoi(input$featuresForPrediction)
+        surv_obj <- Surv(train$currentTime,train$currentEvent==1)
+        model.Cox$mod <<- coxph(surv_obj~.,data=data.frame(train$currentData[,index_feats]))
+        model.Cox$pred <<- predict(model.Cox$mod,type="risk",se.fit=TRUE)
+        x <- as.data.frame(model.Cox$mod$coefficients)
+        dtf <- data.frame(x = rownames(x),y = x[,1])
+        n <- length(dtf$x)
+        plotly_cols <- colorRampPalette(brewer.pal(9,"Blues"))(2*n)
+        m <- plot_ly(dtf,x=dtf$x,y=dtf$y,type="bar",text=paste("Feature: ",dtf$x),marker=list(color=plotly_cols[(n):(2*n)]),showlegend=FALSE)
+        m <- layout(m,title = "Estimated Coefficients by Cox-model")
+        m
+      }
     }
   })
   },priority=1)
@@ -430,7 +454,9 @@ shinyServer(function(input, output) {
     input$defaultData
   },
   {output$patientSelection <- renderUI({
-    selectInput("patientSelect",NULL,choices=train$listOfPatients,selected=1,width='100%')
+    if( !is.null(train$currentData) ){
+      selectInput("patientSelect",NULL,choices=train$listOfPatients,selected=1,width='100%')
+    }
     })
   })
   
@@ -442,11 +468,13 @@ shinyServer(function(input, output) {
     input$patientSelect
   },
   {output$riskScore <- renderText({
+    if( length(input$featuresForPrediction) > 0 & !is.null(train$currentData) ){
       if( input$model == "coxmodel" ){
-        paste("Risk Score = ",round(pred.cox$fit[input$patientSelect],4))
+        paste("Risk Score = ",round(model.Cox$pred$fit[input$patientSelect],4))
       }else{
         "You must select a valid model"
       }
+    }
     })
   })
   
@@ -458,14 +486,16 @@ shinyServer(function(input, output) {
     input$patientSelect
   },
   {output$survivalCurvePatient <- renderPlotly({
+    if( length(input$featuresForPrediction) > 0 & !is.null(train$currentData) ){
       if( input$model == "coxmodel" ){
         index_patient <- strtoi(input$patientSelect)
         index_feats <- strtoi(input$featuresForPrediction)
-        surv.fit <- survfit(mod.cox,newdata=data.frame(train$currentData[index_patient,index_feats]))
+        surv.fit <- survfit(model.Cox$mod,newdata=data.frame(train$currentData[index_patient,index_feats]))
         title <- paste("Survival probability for Patient",index_patient,"with Cox-model")
         m <- ggsurv(surv.fit,plot.cens=FALSE,surv.col="blue",xlab="Time",ylab="Survival Probability",main=title)
         ggplotly(m)
       }
+    }
     })
   },priority=0)
   

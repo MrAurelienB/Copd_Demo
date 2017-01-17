@@ -36,6 +36,7 @@ htmlTableStyle <- tags$style(type="text/css",
 #######################
 tabPanel_Home <- tabPanel(
   strong("Home"),
+  value = "home",
   errorStyle,
   fluidRow(
     column(width,
@@ -57,12 +58,14 @@ tabPanel_Home <- tabPanel(
 #######################
 tabPanel_Data <- tabPanel(
   strong("Data"),
+  value = "data",
   errorStyle,
   fluidRow(
     #---MENU
     column(leftWidth,
-      fileInput("data_file", "Choose CSV File",
-                accept = c("text/csv","text/comma-separated-values,text/plain",".csv")
+      fileInput("data_file", "Choose a Database CSV File",
+                accept = c("text/csv","text/comma-separated-values,text/plain",".csv"),
+                width='100%'
       ),
       checkboxInput('header', 'Header', TRUE),
       tags$hr(),
@@ -85,6 +88,7 @@ tabPanel_Data <- tabPanel(
 #######################
 tabPanel_Stat <- tabPanel(
   strong("Stat"),
+  value = "stat",
   errorStyle,
   htmlTableStyle,
   fluidRow(
@@ -94,7 +98,7 @@ tabPanel_Stat <- tabPanel(
       strong("Display"),
       selectInput("dataDisplay",NULL,
                        c("Risk Factors" = "features","Patients" = "patients"),
-                       selected="features"),
+                       selected="features",width='100%'),
       strong("Select a feature"),
       uiOutput("selectInputFeatures"),
       strong("Select a patient"),
@@ -115,6 +119,7 @@ tabPanel_Stat <- tabPanel(
 ############################
 tabPanel_Prediction <- tabPanel(
   strong("Prediction"),
+  value = "prediction",
   errorStyle,
   fluidRow(
     #---Select parameter for prediction
@@ -122,9 +127,13 @@ tabPanel_Prediction <- tabPanel(
       strong("Select a Model"),
       selectInput("model",NULL,
            c("Cox Model"="coxmodel","..."="..."),
-           selected="coxmodel"),
-      strong("Select features"),
-      uiOutput("featuresForModel")
+           selected="coxmodel",width='100%'),
+      strong("Features for prediction"),
+      checkboxInput("all","all",value = TRUE),
+      wellPanel(
+                uiOutput("featuresForModel"),
+                style = "overflow-y:scroll; max-height: 300px"
+      )
     ),
     #---prediction plot
     column(rightWidth,
@@ -151,12 +160,13 @@ tabPanel_Prediction <- tabPanel(
 ##############################
 tabPanel_Classifier <- tabPanel(
   strong("Classifier"),
+  value = "classifier",
   errorStyle,
   fluidRow(
     column(leftWidth,
       strong("Select a classifier"),
       selectInput("classificationMethod",NULL,
-                   c("k-nn" = "knn","SVM" = "svm"))
+                   c("k-nn" = "knn","SVM" = "svm"),width='100%')
       ),
     column(rightWidth
       
@@ -169,16 +179,16 @@ tabPanel_Classifier <- tabPanel(
 ###---ASSEMBLE PANELS
 #########################
 shinyUI(
-  navbarPage(
-    strong("COPD Demo"),
-    position = "static-top",
-    windowTitle = "COPD Demo",
-    collapsible = TRUE,
-    theme = shinytheme("cerulean"),
-    tabPanel_Home,
-    tabPanel_Data,
-    tabPanel_Stat,
-    tabPanel_Prediction,
-    tabPanel_Classifier
-  )
+    navbarPage(
+      strong("COPD Demo"),
+      position = "static-top",
+      windowTitle = "COPD Demo",
+      collapsible = TRUE,
+      theme = shinytheme("cerulean"),
+      tabPanel_Home,
+      tabPanel_Data,
+      tabPanel_Stat,
+      tabPanel_Prediction,
+      tabPanel_Classifier
+    )
 )
