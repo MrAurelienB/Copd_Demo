@@ -63,18 +63,24 @@ tabPanel_Data <- tabPanel(
   fluidRow(
     #---MENU
     column(leftWidth,
-      fileInput("data_file", "Choose a Database CSV File",
+      fileInput("data_file", "Choose a Database (CSV File)",
                 accept = c("text/csv","text/comma-separated-values,text/plain",".csv"),
                 width='100%'
       ),
-      checkboxInput('header', 'Header', TRUE),
-      tags$hr(),
+      checkboxInput("headerDataFile","Header", TRUE),
+      hr(),
       actionLink("defaultData","Load Default COPD-Data"),
-      tags$hr(),
+      hr(),
       strong("Event of interest (failure)"),
       selectInput("inputEventOfInterest",NULL,
                   c("Death"="Death","Combined Events (Readmission and Death)"="Both"),
-                  selected="Both",width='100%')
+                  selected="Both",width='100%'),
+      hr(),
+      fileInput("test_file", "Choose a test file (CSV File)",
+                accept = c("text/csv","text/comma-separated-values,text/plain",".csv"),
+                width='100%'
+      ),
+      checkboxInput("headerTestFile","Header", TRUE)
     ),
     #---PLOT
     column(rightWidth,
