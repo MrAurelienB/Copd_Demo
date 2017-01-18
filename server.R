@@ -18,17 +18,19 @@ library(plotly)
 library(RColorBrewer)
 
 
-shinyServer(function(input, output) {
+shinyServer(function(input, output, session) {
   
   #############################
   #------variables
   #############################
   
+  dataLoaded <- FALSE
+  
   #---list element that contains the training set objects
   train <- list(
     "n" = 0,
-    "listOfFeatures" = list(),
-    "listOfPatients" = list(),
+    "listOfFeatures" = NULL,
+    "listOfPatients" = NULL,
     "isDeath" = NULL,
     "isBoth" = NULL,
     "timeDeath" = NULL,
@@ -96,7 +98,7 @@ shinyServer(function(input, output) {
     names(train$listOfPatients) <<- paste(as.list(rep("Patient",n)),as.character(as.list(1:n)),":",as.character(train$patientsID))
     
     setEventOfInterest()
-    
+    dataLoaded <<- TRUE
   }
   
   #---sets the current event of interest and time depending of the choice
@@ -410,9 +412,9 @@ shinyServer(function(input, output) {
   
   #---select input to choose the features to apply a model
   observeEvent({
-    input$model
-    input$defaultData
     input$data_file
+    input$defaultData
+    input$model
     },
     {output$featuresForModel <- renderUI({
       if( !is.null(train$currentData) ){
@@ -421,6 +423,23 @@ shinyServer(function(input, output) {
                            choices=listOfChoices,selected=listOfChoices,width='100%')
       }
     })
+  })
+  
+  #---select all/none checkbox for the features
+  observeEvent({
+   input$selectAllNone
+  },
+  {
+    listOfChoices <- NULL
+    listOfSelected <- character(0)
+    print(dataLoaded)
+    if( !is.null(train$listOfFeatures) & dataLoaded ){
+      listOfChoices <- train$listOfFeatures
+      if( input$selectAllNone ){
+        listOfSelected <- train$listOfFeatures
+      }
+      updateCheckboxGroupInput(session,inputId="featuresForPrediction",label="All/None",choices=listOfChoices,selected=listOfSelected)
+    }
   })
   
   #---plot the coefficients for the models
@@ -452,10 +471,12 @@ shinyServer(function(input, output) {
   observeEvent({
     input$data_file
     input$defaultData
+    input$model
   },
   {output$patientSelection <- renderUI({
     if( !is.null(train$currentData) ){
-      selectInput("patientSelect",NULL,choices=train$listOfPatients,selected=1,width='100%')
+      listOfChoices <- as.list(train$listOfPatients)
+      selectInput("patientSelect",NULL,choices=listOfChoices,selected=1,width='100%')
     }
     })
   })

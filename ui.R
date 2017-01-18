@@ -129,7 +129,7 @@ tabPanel_Prediction <- tabPanel(
            c("Cox Model"="coxmodel","..."="..."),
            selected="coxmodel",width='100%'),
       strong("Features for prediction"),
-      checkboxInput("all","all",value = TRUE),
+      checkboxInput("selectAllNone","All/None",value = TRUE),
       wellPanel(
                 uiOutput("featuresForModel"),
                 style = "overflow-y:scroll; max-height: 300px"
