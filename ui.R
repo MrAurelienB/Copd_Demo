@@ -80,7 +80,8 @@ tabPanel_Data <- tabPanel(
                 accept = c("text/csv","text/comma-separated-values,text/plain",".csv"),
                 width='100%'
       ),
-      checkboxInput("headerTestFile","Header", TRUE)
+      checkboxInput("headerTestFile","Header", TRUE),
+      hr()
     ),
     #---PLOT
     column(rightWidth,
@@ -123,41 +124,80 @@ tabPanel_Stat <- tabPanel(
 ############################
 ###---PREDICTION---PANEL
 ############################
+listThreshold <- seq(5,95,5)
+names(listThreshold) <- paste(seq(5,95,5),"%",sep="")
+############################
+
+#---select model and features
+columnL1 <- column(leftWidth,
+                  strong("Select a Model"),
+                  selectInput("model",NULL,
+                              c("Cox Model"="coxmodel","..."="..."),
+                              selected="coxmodel",width='100%'),
+                  strong("Features for prediction"),
+                  checkboxInput("selectAllNone","All/None",value = TRUE),
+                  wellPanel(
+                    uiOutput("featuresForModel"),
+                    style = "overflow-y:scroll; max-height: 300px"
+                  )
+)
+
+#---plot model coefficients
+columnR1 <- column(rightWidth,
+                  plotlyOutput("modelCoeff") 
+)
+
+#---select a patient
+columnL2 <- column(leftWidth,
+                   strong("Choose a patient"),
+                   uiOutput("patientSelection")
+)
+
+panelR2.1 <- tabPanel("Baseline Hazard", 
+                      "Baseline hazard plot"
+)
+
+panelR2.2 <- tabPanel("Survival Curve",
+                      column(leftWidth,
+                             selectInput(inputId = "thresholdSurvivalCurve",label = "Survival threshold",
+                                         choices = listThreshold,
+                                         selected = "50"),
+                             textOutput("timeThreshold")
+                      ),
+                      column(rightWidth,
+                             plotlyOutput("survivalCurvePatient")
+                      )
+)
+
+panelR2.3 <- tabPanel("Summary",
+                      "text summary",
+                      selectInput(inputId = "interval",label = "Prediction interval",
+                                  choices = c("Daily"="daily","Weekly"="weekly","Monthly"="monthly"),
+                                  selected = "monthly"),
+                      strong(textOutput("riskScore"))
+)
+
+columnR2 <- column(rightWidth,
+                   tabsetPanel(
+                     panelR2.1,
+                     panelR2.2,
+                     panelR2.3
+                   )
+)
+
+############################
 tabPanel_Prediction <- tabPanel(
   strong("Prediction"),
   value = "prediction",
   errorStyle,
   fluidRow(
-    #---Select parameter for prediction
-    column(leftWidth,
-      strong("Select a Model"),
-      selectInput("model",NULL,
-           c("Cox Model"="coxmodel","..."="..."),
-           selected="coxmodel",width='100%'),
-      strong("Features for prediction"),
-      checkboxInput("selectAllNone","All/None",value = TRUE),
-      wellPanel(
-                uiOutput("featuresForModel"),
-                style = "overflow-y:scroll; max-height: 300px"
-      )
-    ),
-    #---prediction plot
-    column(rightWidth,
-      plotlyOutput("modelCoeff") 
-    )
+    columnL1,
+    columnR1
   ),
   br(),
   fluidRow(
-    #---select patient for prediction
-    column(leftWidth,
-      strong("Choose a patient"),
-      uiOutput("patientSelection")
-    ),
-    #---plot patient prediction
-    column(rightWidth,
-      wellPanel(strong(textOutput("riskScore"))),
-      plotlyOutput("survivalCurvePatient")
-    )
+    columnL2,
+    columnR2
   )
 )
 

@@ -592,4 +592,27 @@ shinyServer(function(input, output, session) {
     })
   },priority=0)
   
+  #---print the threshold survival time
+  observeEvent({
+    input$featuresForPrediction
+    input$inputEventOfInterest
+    input$model
+    input$patientSelect
+    input$thresholdSurvivalCurve
+  },
+  {output$timeThreshold <- renderText({
+      threshold <- strtoi(input$thresholdSurvivalCurve) / 100
+      index_patient <- strtoi(input$patientSelect)
+      index_feats <- strtoi(input$featuresForPrediction)
+      surv.fit <- survfit(model.cox$mod,newdata=data.frame(test$currentData[index_patient,index_feats]))
+      time <- max( which(surv.fit$surv >= threshold , arr.ind = TRUE) )
+      paste("Time :",time,"days")
+    })
+  })
+  
+  
+  
+  
+  
+  
 })
