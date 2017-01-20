@@ -321,9 +321,8 @@ shinyServer(function(input, output, session) {
     input$dataDisplay
     },
     {output$selectInputFeatures <- renderUI({
-      print("called")
         listOfChoices = c("DEFAULT"="default",train$listOfFeatures)
-        selectInput("inputFeatures",NULL,choices=listOfChoices,width='100%')
+        selectInput(inputId = "inputFeatures", label = "Select a feature",choices=listOfChoices,width='100%')
       })
     })
   
@@ -335,7 +334,7 @@ shinyServer(function(input, output, session) {
     },
     {output$selectInputPatients <- renderUI({
         listOfChoices = as.list(test$listOfPatients)
-        selectInput("inputPatients",NULL,choices=test$listOfPatients,width='100%')
+        selectInput(inputId = "inputPatients",label = "Select a patient",choices=test$listOfPatients,width='100%')
       })
     })
   
@@ -548,7 +547,7 @@ shinyServer(function(input, output, session) {
   {output$patientSelection <- renderUI({
     if( !is.null(test$currentData) ){
       listOfChoices <- as.list(test$listOfPatients)
-      selectInput("patientSelect",NULL,choices=listOfChoices,selected=1,width='100%')
+      selectInput(inputId = "patientSelect",label = "Choose a patient",choices=listOfChoices,selected=1,width='100%')
     }
     })
   })

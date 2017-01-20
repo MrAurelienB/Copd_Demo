@@ -63,24 +63,23 @@ tabPanel_Data <- tabPanel(
   fluidRow(
     #---MENU
     column(leftWidth,
-      fileInput("data_file", "Choose a Database (CSV File)",
+      fileInput(inputId = "data_file", label = "Choose a Database (CSV File)",
                 accept = c("text/csv","text/comma-separated-values,text/plain",".csv"),
                 width='100%'
       ),
-      checkboxInput("headerDataFile","Header", TRUE),
+      checkboxInput(inputId = "headerDataFile", label = "Header", TRUE),
       hr(),
-      actionLink("defaultData","Load Default COPD-Data"),
+      actionLink(inputId = "defaultData", label = "Load Default COPD-Data"),
       hr(),
-      strong("Event of interest (failure)"),
-      selectInput("inputEventOfInterest",NULL,
+      selectInput(inputId = "inputEventOfInterest", label = "Event of interest (failure)",
                   c("Death"="Death","Combined Events (Readmission and Death)"="Both"),
                   selected="Both",width='100%'),
       hr(),
-      fileInput("test_file", "Choose a test file (CSV File)",
+      fileInput(inputId = "test_file", label = "Choose a test file (CSV File)",
                 accept = c("text/csv","text/comma-separated-values,text/plain",".csv"),
                 width='100%'
       ),
-      checkboxInput("headerTestFile","Header", TRUE),
+      checkboxInput(inputId = "headerTestFile", label = "Header", TRUE),
       hr()
     ),
     #---PLOT
@@ -102,18 +101,15 @@ tabPanel_Stat <- tabPanel(
     shinyjs::useShinyjs(),
     #---MENU
     column(leftWidth,
-      strong("Display"),
-      selectInput("dataDisplay",NULL,
+      selectInput(inputId = "dataDisplay", label = "Display",
                        c("Risk Factors" = "features","Patients" = "patients"),
                        selected="features",width='100%'),
-      strong("Select a feature"),
       uiOutput("selectInputFeatures"),
-      strong("Select a patient"),
       uiOutput("selectInputPatients")
     ),
     #---PLOT
     column(rightWidth,
-    htmlOutput("featuresInfos"),
+      htmlOutput("featuresInfos"),
       htmlOutput("patientsInfos"),
       plotlyOutput("dataBarplot"),
       plotOutput("survivalCurveFeature")
@@ -130,12 +126,11 @@ names(listThreshold) <- paste(seq(5,95,5),"%",sep="")
 
 #---select model and features
 columnL1 <- column(leftWidth,
-                  strong("Select a Model"),
-                  selectInput("model",NULL,
+                  selectInput(inputId = "model", label = "Select a Model",
                               c("Cox Model"="coxmodel","..."="..."),
                               selected="coxmodel",width='100%'),
                   strong("Features for prediction"),
-                  checkboxInput("selectAllNone","All/None",value = TRUE),
+                  checkboxInput(inputId = "selectAllNone", label = "All/None",value = TRUE),
                   wellPanel(
                     uiOutput("featuresForModel"),
                     style = "overflow-y:scroll; max-height: 300px"
@@ -149,7 +144,6 @@ columnR1 <- column(rightWidth,
 
 #---select a patient
 columnL2 <- column(leftWidth,
-                   strong("Choose a patient"),
                    uiOutput("patientSelection")
 )
 
@@ -210,8 +204,7 @@ tabPanel_Classifier <- tabPanel(
   errorStyle,
   fluidRow(
     column(leftWidth,
-      strong("Select a classifier"),
-      selectInput("classificationMethod",NULL,
+      selectInput(inputId = "classificationMethod", label = "Select a Classifier",
                    c("k-nn" = "knn","SVM" = "svm"),width='100%')
       ),
     column(rightWidth
