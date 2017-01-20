@@ -164,11 +164,16 @@ panelR2.2 <- tabPanel("Survival Curve",
 )
 
 panelR2.3 <- tabPanel("Summary",
-                      "text summary",
-                      selectInput(inputId = "interval",label = "Prediction interval",
-                                  choices = c("Daily"="daily","Weekly"="weekly","Monthly"="monthly"),
-                                  selected = "monthly"),
-                      strong(textOutput("riskScore"))
+                      column(leftWidth,
+                        "text summary",
+                        selectInput(inputId = "interval",label = "Prediction interval",
+                                         choices = c("Daily"=1,"Weekly"=7,"Monthly"=30),
+                                         selected = "monthly"),
+                        strong(textOutput("riskScore"))
+                      ),
+                      column(rightWidth,
+                        dataTableOutput("intervalPrediction")
+                      )
 )
 
 columnR2 <- column(rightWidth,

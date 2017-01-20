@@ -609,7 +609,40 @@ shinyServer(function(input, output, session) {
     })
   })
   
-  
+  #---print the survival probability according to the time interval
+  observeEvent({
+    input$featuresForPrediction
+    input$inputEventOfInterest
+    input$model
+    input$patientSelect
+    input$thresholdSurvivalCurve
+    input$interval
+  },
+  {output$intervalPrediction <- renderDataTable({
+    index_patient <- strtoi(input$patientSelect)
+    index_feats <- strtoi(input$featuresForPrediction)
+    surv.fit <- survfit(model.cox$mod,newdata=data.frame(test$currentData[index_patient,index_feats]))
+    maxTime <- max(summary(surv.fit)$time)
+    fit <- summary(surv.fit,times=1:maxTime)
+    interval <- strtoi(input$interval)
+    intervalName <- "days"
+    if( interval == 7 )
+      intervalName <- "weeks"
+    if( interval == 30 ){
+      intervalName <- "months"
+    }
+    count <- 1
+    display <- rbind(c(count,round(fit$surv[1],3)))
+    colnames(display) <- c(paste("Time (",intervalName,")",sep=""),"survival")
+    for( i in seq(0,maxTime,interval) ){
+      if( i > 1 ){
+        count <- count + 1
+        display <- rbind(display,c(count,round(fit$surv[i],3)))
+      }
+    }
+    display
+  })
+  })
   
   
   
