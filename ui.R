@@ -41,14 +41,22 @@ tabPanel_Home <- tabPanel(
   fluidRow(
     column(width,
            h1("Web Application for COPD prediction", align = "center"),
-           tags$hr(),
-           h1("Application Web pour prediction liee a la MPOC", align = "center"),
-           tags$h6(align="center",
-                   "Universite de Sherbrooke - Faculte des Sciences - Departement Informatique",br(),
-                   HTML(' <a href="http://info.usherbrooke.ca/Prospectus" target="_blank">Laboratoire Prospectus</a> ')," - Aurelien Bach - Jianfei Zhang - Shengrui Wang",br(),
-                   "CHUS - Centre Hospitalier Universitaire de Sherbrooke",br(),
-                   "GPL licence - 2016"
-           )
+           hr(),
+           h6(align="center",
+              "Universite de Sherbrooke (UdeS) - Faculte des Sciences - Departement Informatique",
+              br(),
+              HTML(' <a href="http://info.usherbrooke.ca/Prospectus" target="_blank">Laboratoire Prospectus</a> ')," - Aurelien Bach - Jianfei Zhang - Shengrui Wang",
+              br()
+           ),
+           hr(),
+           h6(align="center",
+              "Centre Hospitalier Universitaire de Sherbrooke (CHUS)",
+              br()
+           ),
+           hr(),
+           h6(align="center",
+              "GPL licence - 2016"
+           )        
     )
   )
 )
@@ -147,7 +155,7 @@ columnL2 <- column(leftWidth,
                    uiOutput("patientSelection")
 )
 
-panelR2.1 <- tabPanel("Baseline Hazard", 
+panelR2.1 <- tabPanel("Cumulative Baseline Hazard", 
                       plotlyOutput("cumulativeBaselineHazard")
 )
 
