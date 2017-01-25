@@ -44,8 +44,8 @@ tabPanel_Home <- tabPanel(
            tags$hr(),
            h1("Application Web pour prediction liee a la MPOC", align = "center"),
            tags$h6(align="center",
-                   "UdeS - Faculte des Sciences - Departement Informatique - ",
-                   HTML(' <a href="http://info.usherbrooke.ca/Prospectus" target="_blank">Prospectus</a> '),br(),
+                   "Universite de Sherbrooke - Faculte des Sciences - Departement Informatique",br(),
+                   HTML(' <a href="http://info.usherbrooke.ca/Prospectus" target="_blank">Laboratoire Prospectus</a> ')," - Aurelien Bach - Jianfei Zhang - Shengrui Wang",br(),
                    "CHUS - Centre Hospitalier Universitaire de Sherbrooke",br(),
                    "GPL licence - 2016"
            )
@@ -148,7 +148,7 @@ columnL2 <- column(leftWidth,
 )
 
 panelR2.1 <- tabPanel("Baseline Hazard", 
-                      "Baseline hazard plot"
+                      plotlyOutput("cumulativeBaselineHazard")
 )
 
 panelR2.2 <- tabPanel("Survival Curve",
@@ -163,7 +163,7 @@ panelR2.2 <- tabPanel("Survival Curve",
                       )
 )
 
-panelR2.3 <- tabPanel("Summary",
+panelR2.3 <- tabPanel("Patient Summary",
                       column(leftWidth,
                         "text summary",
                         selectInput(inputId = "interval",label = "Prediction interval",
@@ -176,11 +176,21 @@ panelR2.3 <- tabPanel("Summary",
                       )
 )
 
+panelR2.4 <- tabPanel("Model Summary",
+                      column(leftWidth,
+                        htmlOutput("modelSummary")
+                      ),
+                      column(rightWidth
+                             
+                      )
+)
+
 columnR2 <- column(rightWidth,
                    tabsetPanel(
                      panelR2.1,
                      panelR2.2,
-                     panelR2.3
+                     panelR2.3,
+                     panelR2.4
                    )
 )
 

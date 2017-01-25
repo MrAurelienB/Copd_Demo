@@ -75,9 +75,10 @@ shinyServer(function(input, output, session) {
   model.cox <- list(
     "mod" <- NULL,
     "pred" <- NULL,
-    "ci" <- NULL,
-    "auc" <- NULL,
-    "mse" <- NULL
+    "surv" <- NULL,
+    "ci" <- 0,
+    "auc" <- 0,
+    "mse" <- 0
   )
   
   #############################
@@ -103,7 +104,7 @@ shinyServer(function(input, output, session) {
     train$n <<- n
 
     #---check if the there is the require features
-    if( d < 9 )
+    if( d < 14 )
       return(NULL)
     
     #---save the interesting features
@@ -118,7 +119,7 @@ shinyServer(function(input, output, session) {
     train$disease <<- train$initialData[,8]
     
     train$dataDeath <<- train$initialData[,-c(1:8)]
-    train$dataBoth <<- train$initialData[,-c(1:8)]
+    train$dataBoth <<- train$initialData[,-c(1:8,11:14)]
 
     #---save the list of patientsID (in column 1)
     train$listOfPatients <<- as.list(1:n)
@@ -150,7 +151,7 @@ shinyServer(function(input, output, session) {
     test$disease <<- test$initialData[,8]
     
     test$dataDeath <<- test$initialData[,-c(1:8)]
-    test$dataBoth <<- test$initialData[,-c(1:8)]
+    test$dataBoth <<- test$initialData[,-c(1:8,11:14)]
     
     #---save the list of patientsID (in column 1)
     test$listOfPatients <<- as.list(1:n)
@@ -164,7 +165,7 @@ shinyServer(function(input, output, session) {
       train$currentEvent <<- train$isDeath
       train$currentTime <<- train$timeDeath
       train$currentData <<- train$dataDeath
-      test$currentData <<- test$dataBoth
+      test$currentData <<- test$dataDeath
     }else if( input$inputEventOfInterest == "Both" ){
       train$currentEvent <<- train$isBoth
       train$currentTime <<- train$timeBoth
@@ -193,7 +194,8 @@ shinyServer(function(input, output, session) {
         numericalFeatures <- c( numericalFeatures , featuresName[i] )
     }
     text <- paste(strong("Number of features :"),length(train$currentData[1,]),br(),
-                  strong("Number of record :"),train$n,br(),br())
+                  strong("Number of record in database (training set) : "),train$n,br(),
+                  strong("Number of record in test set : "),test$n,br(),br())
     maxLenth <- max(length(binaryFeatures),max(length(categoricalFeatures),length(numericalFeatures)))
     #---construct the html table
     trFeatures <- tagList()
@@ -265,6 +267,61 @@ shinyServer(function(input, output, session) {
     return(text)
   }
   
+  #---compute the concordance index
+  cindex <- function(time,event,s){
+    ci <- 0
+    npair <- 0
+    n <- length(event)
+    for( i in 1:n ){
+      for( j in 1:n ){
+        ti <- time[i]
+        tj <- time[j]
+        if( event[i] == 1 & tj > ti ){
+          npair = npair + 1
+          if( s[i,ti] < s[j,ti] ){
+            ci = ci + 1
+          }
+        }
+      }
+    }
+    ci / npair
+  }
+  
+  #---compute the SAUC measure
+  sauc <- function(time,event,s,maxT){
+    auc <- 0
+    n <- length(event)
+    E0 <- c()
+    E1 <- c()
+    for( i in 1:n ){
+      if( event[i] == 1 ){
+        E1 <- c( E1 , i )
+      }else{
+        E0 <- c( E0 , i )
+      }
+    }
+    npair <- length(E0) * length(E1)
+    for( i in E1 ){
+      for( j in E0 ){
+        if( s[i,maxT] < s[j,maxT] ){
+          auc = auc + 1
+        }
+      }
+    }
+    auc / npair
+  }
+  
+  #---compute the MSE
+  mse <- function(time,event,s){
+    mse <- 0
+    n <- length(event)
+    for( i in 1:n ){
+      err <- ( 1 - event[i] - s[i,time[i]] )^2
+      mse <- mse + err
+    }
+    mse / n
+  }
+  
   #################################
   #------output and observeEvent
   #################################
@@ -305,7 +362,7 @@ shinyServer(function(input, output, session) {
   observeEvent(
     input$defaultData, 
     {
-    path_trainingSet <- "www/copd_demo_data_csv.csv"
+    path_trainingSet <- "www/copd_demo_train_csv.csv"
     train$initialData <<- readDataFile(path_trainingSet)
     path_testSet <- "www/copd_demo_test_csv.csv"
     test$initialData <<- readDataFile(path_testSet)
@@ -525,6 +582,19 @@ shinyServer(function(input, output, session) {
         surv_obj <- Surv(train$currentTime,train$currentEvent==1)
         model.cox$mod <<- coxph(surv_obj~.,data=data.frame(train$currentData[,index_feats]))
         newdata <- data.frame(test$currentData[,index_feats])
+        #---predict the survival probability and save them in memory
+        tmax <- max(train$currentTime)
+        s <- matrix(nrow=train$n,ncol=tmax)
+        for( i in 1:train$n ){
+          surv.fit.i <- survfit(model.cox$mod,newdata=train$currentData[i,])
+          s[i,] <- summary(surv.fit.i,times=1:tmax)$surv
+        }
+        model.cox$surv <<- s
+        #---compute the quality measures
+        model.cox$ci <<- cindex(train$currentTime,train$currentEvent,model.cox$s)
+        model.cox$auc <<- sauc(train$currentTime,train$currentEvent,model.cox$s,tmax)
+        model.cox$mse <<- mse(train$currentTime,train$currentEvent,model.cox$s)
+        #---keep the risk score in memory
         model.cox$pred <<- predict(model.cox$mod,newdata=newdata,type="risk",se.fit=TRUE)
         x <- as.data.frame(model.cox$mod$coefficients)
         dtf <- data.frame(x = rownames(x),y = x[,1])
@@ -591,6 +661,26 @@ shinyServer(function(input, output, session) {
     })
   },priority=0)
   
+  #---plot the cumulative baseline hazard
+  observeEvent({
+    input$featuresForPrediction
+    input$inputEventOfInterest
+    input$model
+    input$patientSelect
+  },
+  {output$cumulativeBaselineHazard <- renderPlotly({
+    if( length(input$featuresForPrediction) > 0 & !is.null(train$currentData) & !is.null(test$currentData) ){
+      if( input$model == "coxmodel" ){
+        index_feats <- strtoi(input$featuresForPrediction)
+        cbh <- basehaz(model.cox$mod,centered=TRUE)
+        m <- plot_ly(x=cbh$time,y=cbh$hazard ) %>% add_lines(y=cbh$hazard,showlegend=FALSE,mode = 'markers',hoverinfo = 'text',text = paste('Time: ', cbh$time,'</br> Cum.Base.Haz: ',round(cbh$hazard,4)))
+        m <- layout(m, title = "Cumulative Baseline Hazard", xaxis = list(title="time"), yaxis = list(title="") )
+        m
+      }
+    }
+  })
+  },priority=0)
+  
   #---print the threshold survival time
   observeEvent({
     input$featuresForPrediction
@@ -644,7 +734,41 @@ shinyServer(function(input, output, session) {
   })
   })
   
-  
-  
+  #---print the model summary (quality measures...)
+  observeEvent({
+    input$featuresForPrediction
+    input$inputEventOfInterest
+    input$model
+  },
+  {output$modelSummary <- renderUI({
+    title <- "Model : "
+    ci <- 0
+    auc <- 0
+    mse <- 0
+    if( input$model == "coxmodel" ){
+      title <- paste(title,"Cox Model")
+      ci <- round(model.cox$ci,3)
+      auc <- round(model.cox$auc,3)
+      mse <- round(model.cox$mse,3)
+    }
+    text <- paste(strong(title),br(),br())
+    tableMeasures <- tags$table(
+      tags$tr(
+        tags$th(strong("C-index")),
+        tags$th(ci)
+      ),
+      tags$tr(
+        tags$th(strong("SAUC")),
+        tags$th(auc)
+      ),
+      tags$tr(
+        tags$th(strong("MSE")),
+        tags$th(mse)
+      )
+    )
+    text <- paste(text,as.character(tableMeasures))
+    HTML(text)
+  })
+  })
   
 })
