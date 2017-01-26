@@ -76,9 +76,11 @@ shinyServer(function(input, output, session) {
     "mod" <- NULL,
     "pred" <- NULL,
     "surv" <- NULL,
-    "ci" <- 0,
-    "auc" <- 0,
-    "mse" <- 0
+    "bch" <- NULL,
+    "train.risk" <- NULL,
+    "ci" <- NULL,
+    "auc" <- NULL,
+    "mse" <- NULL
   )
   
   #############################
@@ -267,18 +269,43 @@ shinyServer(function(input, output, session) {
     return(text)
   }
   
+  #---conpute the Cox model
+  coxModel <- function( index_feats ){
+    surv_obj <- Surv(train$currentTime,train$currentEvent==1)
+    trainData <- data.frame(train$currentData[,index_feats])
+    newData <- data.frame(test$currentData[,index_feats])
+    tmax <- max(train$currentTime)
+    #---compute the model
+    model.cox$mod <<- coxph(surv_obj~.,data=trainData)
+    #---compute cumulative baseline hazard
+    model.cox$cbh <<- basehaz(model.cox$mod,centered=TRUE)
+    #---compute the risk score of the training set
+    model.cox$train.risk <<- predict(model.cox$mod,newdata=trainData,type="risk",se.fit=TRUE)
+    #---compute the quality measures
+    model.cox$ci <<- cindex(train$currentTime,train$currentEvent,model.cox$train.risk$fit)
+    model.cox$auc <<- sauc(train$currentTime,train$currentEvent,model.cox$train.risk$fit,tmax)
+    model.cox$mse <<- mse(train$currentTime,train$currentEvent,model.cox$cbh,model.cox$train.risk$fit)
+    #---compute the risk score in memory of the test set
+    model.cox$pred <<- predict(model.cox$mod,newdata=newData,type="risk",se.fit=TRUE)
+    #---predict the survival probability and save them in memory
+    #s <- matrix(nrow=train$n,ncol=tmax)
+    #for( i in 1:train$n ){
+    #  surv.fit.i <- survfit(model.cox$mod,newdata=train$currentData[i,])
+    #  s[i,] <- summary(surv.fit.i,times=1:tmax)$surv
+    #}
+    #model.cox$surv <<- s
+  }
+  
   #---compute the concordance index
-  cindex <- function(time,event,s){
+  cindex <- function(time,event,risk){
     ci <- 0
     npair <- 0
     n <- length(event)
     for( i in 1:n ){
       for( j in 1:n ){
-        ti <- time[i]
-        tj <- time[j]
-        if( event[i] == 1 & tj > ti ){
+        if( event[i] == 1 & time[j] > time[i] ){
           npair = npair + 1
-          if( s[i,ti] < s[j,ti] ){
+          if( risk[i] > risk[j] ){
             ci = ci + 1
           }
         }
@@ -288,7 +315,7 @@ shinyServer(function(input, output, session) {
   }
   
   #---compute the SAUC measure
-  sauc <- function(time,event,s,maxT){
+  sauc <- function(time,event,risk,maxT){
     auc <- 0
     n <- length(event)
     E0 <- c()
@@ -303,7 +330,7 @@ shinyServer(function(input, output, session) {
     npair <- length(E0) * length(E1)
     for( i in E1 ){
       for( j in E0 ){
-        if( s[i,maxT] < s[j,maxT] ){
+        if( risk[i] > risk[j] ){
           auc = auc + 1
         }
       }
@@ -312,11 +339,14 @@ shinyServer(function(input, output, session) {
   }
   
   #---compute the MSE
-  mse <- function(time,event,s){
+  mse <- function(time,event,cbh,risk){
     mse <- 0
     n <- length(event)
     for( i in 1:n ){
-      err <- ( 1 - event[i] - s[i,time[i]] )^2
+      s <- exp(-cbh$hazard*risk[i])
+      index <- which(cbh$time==time[i],arr.ind=FALSE)
+      si <- s[index]
+      err <- ( 1 - event[i] - si )^2
       mse <- mse + err
     }
     mse / n
@@ -579,23 +609,7 @@ shinyServer(function(input, output, session) {
     if( length(input$featuresForPrediction) > 0 & !is.null(train$currentData) & !is.null(test$currentData) ){
       if( input$model == "coxmodel" ){
         index_feats <- strtoi(input$featuresForPrediction)
-        surv_obj <- Surv(train$currentTime,train$currentEvent==1)
-        model.cox$mod <<- coxph(surv_obj~.,data=data.frame(train$currentData[,index_feats]))
-        newdata <- data.frame(test$currentData[,index_feats])
-        #---predict the survival probability and save them in memory
-        tmax <- max(train$currentTime)
-        s <- matrix(nrow=train$n,ncol=tmax)
-        for( i in 1:train$n ){
-          surv.fit.i <- survfit(model.cox$mod,newdata=train$currentData[i,])
-          s[i,] <- summary(surv.fit.i,times=1:tmax)$surv
-        }
-        model.cox$surv <<- s
-        #---compute the quality measures
-        model.cox$ci <<- cindex(train$currentTime,train$currentEvent,model.cox$s)
-        model.cox$auc <<- sauc(train$currentTime,train$currentEvent,model.cox$s,tmax)
-        model.cox$mse <<- mse(train$currentTime,train$currentEvent,model.cox$s)
-        #---keep the risk score in memory
-        model.cox$pred <<- predict(model.cox$mod,newdata=newdata,type="risk",se.fit=TRUE)
+        coxModel(index_feats)
         x <- as.data.frame(model.cox$mod$coefficients)
         dtf <- data.frame(x = rownames(x),y = x[,1])
         n <- length(dtf$x)
@@ -671,8 +685,7 @@ shinyServer(function(input, output, session) {
   {output$cumulativeBaselineHazard <- renderPlotly({
     if( length(input$featuresForPrediction) > 0 & !is.null(train$currentData) & !is.null(test$currentData) ){
       if( input$model == "coxmodel" ){
-        index_feats <- strtoi(input$featuresForPrediction)
-        cbh <- basehaz(model.cox$mod,centered=TRUE)
+        cbh <- model.cox$cbh
         m <- plot_ly(x=cbh$time,y=cbh$hazard ) %>% add_lines(y=cbh$hazard,showlegend=FALSE,mode = 'markers',hoverinfo = 'text',text = paste('Time: ', cbh$time,'</br> Cum.Base.Haz: ',round(cbh$hazard,4)))
         m <- layout(m, title = "Cumulative Baseline Hazard", xaxis = list(title="time"), yaxis = list(title="") )
         m
@@ -747,9 +760,12 @@ shinyServer(function(input, output, session) {
     mse <- 0
     if( input$model == "coxmodel" ){
       title <- paste(title,"Cox Model")
-      ci <- round(model.cox$ci,3)
-      auc <- round(model.cox$auc,3)
-      mse <- round(model.cox$mse,3)
+      if( !is.null(model.cox$ci) )
+        ci <- round(model.cox$ci,4)
+      if( !is.null(model.cox$auc) )
+        auc <- round(model.cox$auc,4)
+      if( !is.null(model.cox$mse) )
+        mse <- round(model.cox$mse,4)
     }
     text <- paste(strong(title),br(),br())
     tableMeasures <- tags$table(
@@ -758,7 +774,7 @@ shinyServer(function(input, output, session) {
         tags$th(ci)
       ),
       tags$tr(
-        tags$th(strong("SAUC")),
+        tags$th(strong("AUC")),
         tags$th(auc)
       ),
       tags$tr(
