@@ -71,8 +71,21 @@ shinyServer(function(input, output, session) {
   #---parameters
   defaultCaterogicalLimit <- 5
   
-  #---contains model coefficients ans prediction
-  model.cox <- list(
+  #---objects for cox model and selected features
+  model.cox.selected <- list(
+    "mod" <- NULL,
+    "pred" <- NULL,
+    "surv" <- NULL,
+    "bch" <- NULL,
+    "train.risk" <- NULL,
+    "ci" <- NULL,
+    "auc" <- NULL,
+    "mse" <- NULL
+  )
+  
+  #---objects for cox model and all features
+  model.cox.all <- list(
+    "computed" <- NULL,
     "mod" <- NULL,
     "pred" <- NULL,
     "surv" <- NULL,
@@ -269,31 +282,45 @@ shinyServer(function(input, output, session) {
     return(text)
   }
   
-  #---conpute the Cox model
-  coxModel <- function( index_feats ){
+  #---conpute the Cox model for the selected factors
+  coxModelSelected <- function( index_feats ){
     surv_obj <- Surv(train$currentTime,train$currentEvent==1)
     trainData <- data.frame(train$currentData[,index_feats])
     newData <- data.frame(test$currentData[,index_feats])
     tmax <- max(train$currentTime)
     #---compute the model
-    model.cox$mod <<- coxph(surv_obj~.,data=trainData)
+    model.cox.selected$mod <<- coxph(surv_obj~.,data=trainData)
     #---compute cumulative baseline hazard
-    model.cox$cbh <<- basehaz(model.cox$mod,centered=TRUE)
+    model.cox.selected$cbh <<- basehaz(model.cox.selected$mod,centered=TRUE)
     #---compute the risk score of the training set
-    model.cox$train.risk <<- predict(model.cox$mod,newdata=trainData,type="risk",se.fit=TRUE)
+    model.cox.selected$train.risk <<- predict(model.cox.selected$mod,newdata=trainData,type="risk",se.fit=TRUE)
     #---compute the quality measures
-    model.cox$ci <<- cindex(train$currentTime,train$currentEvent,model.cox$train.risk$fit)
-    model.cox$auc <<- sauc(train$currentTime,train$currentEvent,model.cox$train.risk$fit,tmax)
-    model.cox$mse <<- mse(train$currentTime,train$currentEvent,model.cox$cbh,model.cox$train.risk$fit)
+    model.cox.selected$ci <<- cindex(train$currentTime,train$currentEvent,model.cox.selected$train.risk$fit)
+    model.cox.selected$auc <<- sauc(train$currentTime,train$currentEvent,model.cox.selected$train.risk$fit,tmax)
+    model.cox.selected$mse <<- mse(train$currentTime,train$currentEvent,model.cox.selected$cbh,model.cox.selected$train.risk$fit)
     #---compute the risk score in memory of the test set
-    model.cox$pred <<- predict(model.cox$mod,newdata=newData,type="risk",se.fit=TRUE)
-    #---predict the survival probability and save them in memory
-    #s <- matrix(nrow=train$n,ncol=tmax)
-    #for( i in 1:train$n ){
-    #  surv.fit.i <- survfit(model.cox$mod,newdata=train$currentData[i,])
-    #  s[i,] <- summary(surv.fit.i,times=1:tmax)$surv
-    #}
-    #model.cox$surv <<- s
+    model.cox.selected$pred <<- predict(model.cox.selected$mod,newdata=newData,type="risk",se.fit=TRUE)
+  }
+  
+  #---conpute the Cox model for all factors
+  coxModelAll <- function(){
+    surv_obj <- Surv(train$currentTime,train$currentEvent==1)
+    trainData <- data.frame(train$currentData[,])
+    newData <- data.frame(test$currentData[,])
+    tmax <- max(train$currentTime)
+    #---compute the model
+    model.cox.all$mod <<- coxph(surv_obj~.,data=trainData)
+    #---compute cumulative baseline hazard
+    model.cox.all$cbh <<- basehaz(model.cox.all$mod,centered=TRUE)
+    #---compute the risk score of the training set
+    model.cox.all$train.risk <<- predict(model.cox.all$mod,newdata=trainData,type="risk",se.fit=TRUE)
+    #---compute the quality measures
+    model.cox.all$ci <<- cindex(train$currentTime,train$currentEvent,model.cox.all$train.risk$fit)
+    model.cox.all$auc <<- sauc(train$currentTime,train$currentEvent,model.cox.all$train.risk$fit,tmax)
+    model.cox.all$mse <<- mse(train$currentTime,train$currentEvent,model.cox.all$cbh,model.cox.all$train.risk$fit)
+    #---compute the risk score in memory of the test set
+    model.cox.all$pred <<- predict(model.cox.all$mod,newdata=newData,type="risk",se.fit=TRUE)
+    model.cox.all$computed <<- TRUE
   }
   
   #---compute the concordance index
@@ -577,7 +604,7 @@ shinyServer(function(input, output, session) {
     {output$featuresForModel <- renderUI({
       if( !is.null(train$currentData) ){
         listOfChoices <- as.list(train$listOfFeatures)
-        checkboxGroupInput("featuresForPrediction",label=NULL,
+        checkboxGroupInput("FactorsForSelection",label=NULL,
                            choices=listOfChoices,selected=listOfChoices,width='100%')
       }
     })
@@ -595,22 +622,38 @@ shinyServer(function(input, output, session) {
       if( input$selectAllNone ){
         listOfSelected <- train$listOfFeatures
       }
-      updateCheckboxGroupInput(session,inputId="featuresForPrediction",label="All/None",choices=listOfChoices,selected=listOfSelected)
+      updateCheckboxGroupInput(session,inputId="FactorsForSelection",label="All/None",choices=listOfChoices,selected=listOfSelected)
     }
   })
   
+  #---compute the model
+  observeEvent({
+    input$FactorsForSelection
+    input$inputEventOfInterest
+    input$model
+  },
+  {
+    if( length(input$FactorsForSelection) > 0 & !is.null(train$currentData) & !is.null(test$currentData) ){
+      if( input$model == "coxmodel" ){
+        if( is.null(model.cox.all$computed) ){
+          coxModelAll()
+        }
+        index_feats <- strtoi(input$FactorsForSelection)
+        coxModelSelected(index_feats)
+      }
+    }
+  },priority=1)
+  
   #---plot the coefficients for the models
   observeEvent({
-    input$featuresForPrediction
+    input$FactorsForSelection
     input$inputEventOfInterest
     input$model
   },
   {output$modelCoeff <- renderPlotly({
-    if( length(input$featuresForPrediction) > 0 & !is.null(train$currentData) & !is.null(test$currentData) ){
+    if( length(input$FactorsForSelection) > 0 & !is.null(train$currentData) & !is.null(test$currentData) ){
       if( input$model == "coxmodel" ){
-        index_feats <- strtoi(input$featuresForPrediction)
-        coxModel(index_feats)
-        x <- as.data.frame(model.cox$mod$coefficients)
+        x <- as.data.frame(model.cox.selected$mod$coefficients)
         dtf <- data.frame(x = rownames(x),y = x[,1])
         n <- length(dtf$x)
         plotly_cols <- colorRampPalette(brewer.pal(9,"Blues"))(2*n)
@@ -620,7 +663,7 @@ shinyServer(function(input, output, session) {
       }
     }
   })
-  },priority=1)
+  },priority=0)
   
   #---select input to choose a patient
   observeEvent({
@@ -638,15 +681,15 @@ shinyServer(function(input, output, session) {
   
   #---print the risk score of a patient
   observeEvent({
-    input$featuresForPrediction
+    input$FactorsForSelection
     input$inputEventOfInterest
     input$model
     input$patientSelect
   },
   {output$riskScore <- renderText({
-    if( length(input$featuresForPrediction) > 0 & !is.null(train$currentData) & !is.null(test$currentData) ){
+    if( length(input$FactorsForSelection) > 0 & !is.null(train$currentData) & !is.null(test$currentData) ){
       if( input$model == "coxmodel" ){
-        paste("Risk Score = ",round(model.cox$pred$fit[input$patientSelect],4))
+        paste("Risk Score = ",round(model.cox.selected$pred$fit[input$patientSelect],4))
       }else{
         "You must select a valid model"
       }
@@ -656,19 +699,19 @@ shinyServer(function(input, output, session) {
   
   #---plot the survival curve for a patient
   observeEvent({
-    input$featuresForPrediction
+    input$FactorsForSelection
     input$inputEventOfInterest
     input$model
     input$patientSelect
   },
   {output$survivalCurvePatient <- renderPlotly({
-    if( length(input$featuresForPrediction) > 0 & !is.null(train$currentData) & !is.null(test$currentData) ){
+    if( length(input$FactorsForSelection) > 0 & !is.null(train$currentData) & !is.null(test$currentData) ){
       if( input$model == "coxmodel" ){
         index_patient <- strtoi(input$patientSelect)
-        index_feats <- strtoi(input$featuresForPrediction)
-        surv.fit <- survfit(model.cox$mod,newdata=data.frame(test$currentData[index_patient,index_feats]))
+        index_feats <- strtoi(input$FactorsForSelection)
+        surv.fit <- survfit(model.cox.selected$mod,newdata=data.frame(test$currentData[index_patient,index_feats]))
         title <- paste("Survival probability for Patient",index_patient,"with Cox-model")
-        m <- ggsurv(surv.fit,plot.cens=FALSE,surv.col="blue",xlab="Time",ylab="Survival Probability",main=title)
+        m <- ggsurv(surv.fit,plot.cens=FALSE,CI=FALSE,surv.col="blue",xlab="Time",ylab="Survival Probability",main=title)
         ggplotly(m)
       }
     }
@@ -677,15 +720,15 @@ shinyServer(function(input, output, session) {
   
   #---plot the cumulative baseline hazard
   observeEvent({
-    input$featuresForPrediction
+    input$FactorsForSelection
     input$inputEventOfInterest
     input$model
     input$patientSelect
   },
   {output$cumulativeBaselineHazard <- renderPlotly({
-    if( length(input$featuresForPrediction) > 0 & !is.null(train$currentData) & !is.null(test$currentData) ){
+    if( length(input$FactorsForSelection) > 0 & !is.null(train$currentData) & !is.null(test$currentData) ){
       if( input$model == "coxmodel" ){
-        cbh <- model.cox$cbh
+        cbh <- model.cox.selected$cbh
         m <- plot_ly(x=cbh$time,y=cbh$hazard ) %>% add_lines(y=cbh$hazard,showlegend=FALSE,mode = 'markers',hoverinfo = 'text',text = paste('Time: ', cbh$time,'</br> Cum.Base.Haz: ',round(cbh$hazard,4)))
         m <- layout(m, title = "Cumulative Baseline Hazard", xaxis = list(title="time"), yaxis = list(title="") )
         m
@@ -696,7 +739,7 @@ shinyServer(function(input, output, session) {
   
   #---print the threshold survival time
   observeEvent({
-    input$featuresForPrediction
+    input$FactorsForSelection
     input$inputEventOfInterest
     input$model
     input$patientSelect
@@ -705,8 +748,8 @@ shinyServer(function(input, output, session) {
   {output$timeThreshold <- renderText({
       threshold <- strtoi(input$thresholdSurvivalCurve) / 100
       index_patient <- strtoi(input$patientSelect)
-      index_feats <- strtoi(input$featuresForPrediction)
-      surv.fit <- survfit(model.cox$mod,newdata=data.frame(test$currentData[index_patient,index_feats]))
+      index_feats <- strtoi(input$FactorsForSelection)
+      surv.fit <- survfit(model.cox.selected$mod,newdata=data.frame(test$currentData[index_patient,index_feats]))
       time <- max( which(surv.fit$surv >= threshold , arr.ind = TRUE) )
       paste("Time :",time,"days")
     })
@@ -714,7 +757,7 @@ shinyServer(function(input, output, session) {
   
   #---print the survival probability according to the time interval
   observeEvent({
-    input$featuresForPrediction
+    input$FactorsForSelection
     input$inputEventOfInterest
     input$model
     input$patientSelect
@@ -723,8 +766,8 @@ shinyServer(function(input, output, session) {
   },
   {output$intervalPrediction <- renderDataTable({
     index_patient <- strtoi(input$patientSelect)
-    index_feats <- strtoi(input$featuresForPrediction)
-    surv.fit <- survfit(model.cox$mod,newdata=data.frame(test$currentData[index_patient,index_feats]))
+    index_feats <- strtoi(input$FactorsForSelection)
+    surv.fit <- survfit(model.cox.selected$mod,newdata=data.frame(test$currentData[index_patient,index_feats]))
     maxTime <- max(summary(surv.fit)$time)
     fit <- summary(surv.fit,times=1:maxTime)
     interval <- strtoi(input$interval)
@@ -749,42 +792,59 @@ shinyServer(function(input, output, session) {
   
   #---print the model summary (quality measures...)
   observeEvent({
-    input$featuresForPrediction
+    input$FactorsForSelection
     input$inputEventOfInterest
     input$model
   },
   {output$modelSummary <- renderUI({
     title <- "Model : "
-    ci <- 0
-    auc <- 0
-    mse <- 0
+    ciAll <- 0
+    ciSelect <- 0
+    aucAll <- 0
+    aucSelect <- 0
+    mseAll <- 0
+    mseSelect <- 0
     if( input$model == "coxmodel" ){
       title <- paste(title,"Cox Model")
-      if( !is.null(model.cox$ci) )
-        ci <- round(model.cox$ci,4)
-      if( !is.null(model.cox$auc) )
-        auc <- round(model.cox$auc,4)
-      if( !is.null(model.cox$mse) )
-        mse <- round(model.cox$mse,4)
+      if( !is.null(model.cox.selected$ci) )
+        ciSelect <- round(model.cox.selected$ci,6)
+      if( !is.null(model.cox.selected$auc) )
+        aucSelect <- round(model.cox.selected$auc,6)
+      if( !is.null(model.cox.selected$mse) )
+        mseSelect <- round(model.cox.selected$mse,6)
+      if( !is.null(model.cox.all$ci) )
+        ciAll <- round(model.cox.all$ci,6)
+      if( !is.null(model.cox.all$auc) )
+        aucAll <- round(model.cox.all$auc,6)
+      if( !is.null(model.cox.all$mse) )
+        mseAll <- round(model.cox.all$mse,6)
     }
     text <- paste(strong(title),br(),br())
     tableMeasures <- tags$table(
       tags$tr(
+        tags$th(""),
+        tags$th(strong("All factors")),
+        tags$th(strong("Selected factors"))
+      ),
+      tags$tr(
         tags$th(strong("C-index")),
-        tags$th(ci)
+        tags$th(ciAll),
+        tags$th(ciSelect)
       ),
       tags$tr(
         tags$th(strong("AUC")),
-        tags$th(auc)
+        tags$th(aucAll),
+        tags$th(aucSelect)
       ),
       tags$tr(
         tags$th(strong("MSE")),
-        tags$th(mse)
+        tags$th(mseAll),
+        tags$th(mseSelect)
       )
     )
     text <- paste(text,as.character(tableMeasures))
     HTML(text)
   })
-  })
+  },priority=0)
   
 })

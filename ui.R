@@ -133,33 +133,35 @@ names(listThreshold) <- paste(seq(5,95,5),"%",sep="")
 ############################
 
 #---select model and features
-columnL1 <- column(leftWidth,
+columnL <- column(leftWidth,
                   selectInput(inputId = "model", label = "Select a Model",
                               c("Cox Model"="coxmodel","..."="..."),
                               selected="coxmodel",width='100%'),
-                  strong("Features for prediction"),
+                  strong("Factors for Selection"),
                   checkboxInput(inputId = "selectAllNone", label = "All/None",value = TRUE),
                   wellPanel(
                     uiOutput("featuresForModel"),
                     style = "overflow-y:scroll; max-height: 300px"
-                  )
+                  ),
+                  uiOutput("patientSelection")
 )
 
-#---plot model coefficients
-columnR1 <- column(rightWidth,
-                  plotlyOutput("modelCoeff") 
+panelR1 <- tabPanel("Coefficients",
+  plotlyOutput("modelCoeff")
 )
 
-#---select a patient
-columnL2 <- column(leftWidth,
-                   uiOutput("patientSelection")
+panelR2 <- tabPanel("Cumulative Baseline Hazard",
+                    fluidRow(
+                      column(8,
+                        plotlyOutput("cumulativeBaselineHazard") 
+                      ),
+                      column(4,
+                        strong("table")
+                      )
+                    )
 )
 
-panelR2.1 <- tabPanel("Cumulative Baseline Hazard", 
-                      plotlyOutput("cumulativeBaselineHazard")
-)
-
-panelR2.2 <- tabPanel("Survival Curve",
+panelR3 <- tabPanel("Survival Curve",
                       column(leftWidth,
                              selectInput(inputId = "thresholdSurvivalCurve",label = "Survival threshold",
                                          choices = listThreshold,
@@ -171,7 +173,7 @@ panelR2.2 <- tabPanel("Survival Curve",
                       )
 )
 
-panelR2.3 <- tabPanel("Patient Summary",
+panelR4 <- tabPanel("Survival Details",
                       column(leftWidth,
                         "text summary",
                         selectInput(inputId = "interval",label = "Prediction interval",
@@ -184,7 +186,7 @@ panelR2.3 <- tabPanel("Patient Summary",
                       )
 )
 
-panelR2.4 <- tabPanel("Model Summary",
+panelR5 <- tabPanel("Model Evaluation",
                       column(leftWidth,
                         htmlOutput("modelSummary")
                       ),
@@ -193,14 +195,16 @@ panelR2.4 <- tabPanel("Model Summary",
                       )
 )
 
-columnR2 <- column(rightWidth,
-                   tabsetPanel(
-                     panelR2.1,
-                     panelR2.2,
-                     panelR2.3,
-                     panelR2.4
-                   )
+columnR <- column(rightWidth,
+                  tabsetPanel(
+                    panelR1,
+                    panelR2,
+                    panelR3,
+                    panelR4,
+                    panelR5
+                  )
 )
+
 
 ############################
 tabPanel_Prediction <- tabPanel(
@@ -208,13 +212,8 @@ tabPanel_Prediction <- tabPanel(
   value = "prediction",
   errorStyle,
   fluidRow(
-    columnL1,
-    columnR1
-  ),
-  br(),
-  fluidRow(
-    columnL2,
-    columnR2
+    columnL,
+    columnR
   )
 )
 
