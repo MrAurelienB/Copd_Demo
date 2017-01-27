@@ -255,27 +255,22 @@ shinyServer(function(input, output, session) {
   #---create HTML text to display for patientInfos
   getPatientInfos <- function( index ){
     psex <- "M"
-    if( train$currentData$sex[index] == 0 )psex <- "F"
-    text <- paste(strong("Patient"),strong(index),":",train$patientsID[index],br())
-    text <- paste(text,"Sex :",psex,br(),"Age :",train$currentData$age[index],br(),br())
+    if( test$initialData[index,16] == 0 )
+      psex <- "F"
+    text <- paste(strong("Patient"),strong(index),":",test$patientsID[index],br())
+    text <- paste(text,"Sex :",psex,br(),"Age :",test$initialData[index,17],br(),br())
     tableFeatures <- tags$table(
       tags$tr(
         tags$th(strong("Admission")),
         tags$th(strong("Discharge")),
         tags$th(strong("Disease")),
-        tags$th(strong("1st hospitalization LoS")),
-        tags$th(strong("Number of Readmission")),
-        tags$th(strong("Total COPD-Cause LoS")),
-        tags$th(strong("Total all-Cause LoS"))
+        tags$th(strong("1st hospitalization LoS"))
       ),
       tags$tr(
-        tags$th(train$admission[index]),
-        tags$th(train$discharge[index]),
-        tags$th(train$disease[index]),
-        tags$th(train$currentData$LOS_index[index]),
-        tags$th(train$initialData$number_of_readmission_before_death[index]),
-        tags$th(train$currentData$COPD_Cause_LOS[index]),
-        tags$th(train$currentData$all_Cause_LOS[index])
+        tags$th(test$admission[index]),
+        tags$th(test$discharge[index]),
+        tags$th(test$disease[index]),
+        tags$th(test$initialData[index,9])
       )
     )
     text <- paste(text,as.character(tableFeatures))
@@ -287,6 +282,9 @@ shinyServer(function(input, output, session) {
     surv_obj <- Surv(train$currentTime,train$currentEvent==1)
     trainData <- data.frame(train$currentData[,index_feats])
     newData <- data.frame(test$currentData[,index_feats])
+    colnames(trainData) <- colnames(train$currentData)[index_feats]
+    colnames(newData) <- colnames(test$currentData)[index_feats]
+    print(newData)
     tmax <- max(train$currentTime)
     #---compute the model
     model.cox.selected$mod <<- coxph(surv_obj~.,data=trainData)
@@ -765,25 +763,28 @@ shinyServer(function(input, output, session) {
     input$interval
   },
   {output$intervalPrediction <- renderDataTable({
-    index_patient <- strtoi(input$patientSelect)
-    index_feats <- strtoi(input$FactorsForSelection)
-    surv.fit <- survfit(model.cox.selected$mod,newdata=data.frame(test$currentData[index_patient,index_feats]))
-    maxTime <- max(summary(surv.fit)$time)
-    fit <- summary(surv.fit,times=1:maxTime)
-    interval <- strtoi(input$interval)
-    intervalName <- "days"
-    if( interval == 7 )
-      intervalName <- "weeks"
-    if( interval == 30 ){
-      intervalName <- "months"
-    }
-    count <- 1
-    display <- rbind(c(count,round(fit$surv[1],3)))
-    colnames(display) <- c(paste("Time (",intervalName,")",sep=""),"survival")
-    for( i in seq(0,maxTime,interval) ){
-      if( i > 1 ){
-        count <- count + 1
-        display <- rbind(display,c(count,round(fit$surv[i],3)))
+    display <- NULL
+    if( input$model == "coxmodel" ){
+      index_patient <- strtoi(input$patientSelect)
+      index_feats <- strtoi(input$FactorsForSelection)
+      surv.fit <- survfit(model.cox.selected$mod,newdata=data.frame(test$currentData[index_patient,index_feats]))
+      maxTime <- max(summary(surv.fit)$time)
+      fit <- summary(surv.fit,times=1:maxTime)
+      interval <- strtoi(input$interval)
+      intervalName <- "days"
+      if( interval == 7 )
+        intervalName <- "weeks"
+      if( interval == 30 ){
+        intervalName <- "months"
+      }
+      count <- 1
+      display <- rbind(c(count,round(fit$surv[1],3)))
+      colnames(display) <- c(paste("Time (",intervalName,")",sep=""),"survival")
+      for( i in seq(0,maxTime,interval) ){
+        if( i > 1 ){
+          count <- count + 1
+          display <- rbind(display,c(count,round(fit$surv[i],3)))
+        }
       }
     }
     display
