@@ -147,42 +147,43 @@ columnL <- column(leftWidth,
 )
 
 panelR1 <- tabPanel("Coefficients",
-  plotlyOutput("modelCoeff")
+  plotlyOutput("modelCoeff",width='100%')
 )
 
 panelR2 <- tabPanel("Cumulative Baseline Hazard",
                     fluidRow(
                       column(8,
-                        plotlyOutput("cumulativeBaselineHazard") 
+                        plotlyOutput("cumulativeBaselineHazard",width='100%') 
                       ),
                       column(4,
-                        strong("table")
+                        dataTableOutput("cbhDataTable")
                       )
                     )
 )
 
 panelR3 <- tabPanel("Survival Curve",
-                      column(leftWidth,
-                             selectInput(inputId = "thresholdSurvivalCurve",label = "Survival threshold",
+                      column(8,
+                             plotlyOutput("survivalCurvePatient",width='100%'),
+                             selectInput(inputId = "thresholdSurvivalCurve",label = "Inverse search",
                                          choices = listThreshold,
                                          selected = "50"),
                              textOutput("timeThreshold")
                       ),
-                      column(rightWidth,
-                             plotlyOutput("survivalCurvePatient")
+                      column(4,
+                             selectInput(inputId = "interval",label = "Prediction interval",
+                                         choices = c("Daily"=1,"Weekly"=7,"Monthly"=30),
+                                         selected = "monthly"),
+                             dataTableOutput("survivalDataTable")
                       )
 )
 
 panelR4 <- tabPanel("Survival Details",
                       column(leftWidth,
-                        "text summary",
-                        selectInput(inputId = "interval",label = "Prediction interval",
-                                         choices = c("Daily"=1,"Weekly"=7,"Monthly"=30),
-                                         selected = "monthly"),
                         strong(textOutput("riskScore"))
+                        
                       ),
-                      column(rightWidth,
-                        dataTableOutput("intervalPrediction")
+                      column(rightWidth
+                        
                       )
 )
 

@@ -284,7 +284,6 @@ shinyServer(function(input, output, session) {
     newData <- data.frame(test$currentData[,index_feats])
     colnames(trainData) <- colnames(train$currentData)[index_feats]
     colnames(newData) <- colnames(test$currentData)[index_feats]
-    print(newData)
     tmax <- max(train$currentTime)
     #---compute the model
     model.cox.selected$mod <<- coxph(surv_obj~.,data=trainData)
@@ -716,44 +715,7 @@ shinyServer(function(input, output, session) {
     })
   },priority=0)
   
-  #---plot the cumulative baseline hazard
-  observeEvent({
-    input$FactorsForSelection
-    input$inputEventOfInterest
-    input$model
-    input$patientSelect
-  },
-  {output$cumulativeBaselineHazard <- renderPlotly({
-    if( length(input$FactorsForSelection) > 0 & !is.null(train$currentData) & !is.null(test$currentData) ){
-      if( input$model == "coxmodel" ){
-        cbh <- model.cox.selected$cbh
-        m <- plot_ly(x=cbh$time,y=cbh$hazard ) %>% add_lines(y=cbh$hazard,showlegend=FALSE,mode = 'markers',hoverinfo = 'text',text = paste('Time: ', cbh$time,'</br> Cum.Base.Haz: ',round(cbh$hazard,4)))
-        m <- layout(m, title = "Cumulative Baseline Hazard", xaxis = list(title="time"), yaxis = list(title="") )
-        m
-      }
-    }
-  })
-  },priority=0)
-  
-  #---print the threshold survival time
-  observeEvent({
-    input$FactorsForSelection
-    input$inputEventOfInterest
-    input$model
-    input$patientSelect
-    input$thresholdSurvivalCurve
-  },
-  {output$timeThreshold <- renderText({
-      threshold <- strtoi(input$thresholdSurvivalCurve) / 100
-      index_patient <- strtoi(input$patientSelect)
-      index_feats <- strtoi(input$FactorsForSelection)
-      surv.fit <- survfit(model.cox.selected$mod,newdata=data.frame(test$currentData[index_patient,index_feats]))
-      time <- max( which(surv.fit$surv >= threshold , arr.ind = TRUE) )
-      paste("Time :",time,"days")
-    })
-  })
-  
-  #---print the survival probability according to the time interval
+  #---print the table of survival probability according to the time interval
   observeEvent({
     input$FactorsForSelection
     input$inputEventOfInterest
@@ -762,9 +724,9 @@ shinyServer(function(input, output, session) {
     input$thresholdSurvivalCurve
     input$interval
   },
-  {output$intervalPrediction <- renderDataTable({
+  {output$survivalDataTable <- renderDataTable({
     display <- NULL
-    if( input$model == "coxmodel" ){
+    if( input$model == "coxmodel" & !is.null(model.cox.selected$cbh) ){
       index_patient <- strtoi(input$patientSelect)
       index_feats <- strtoi(input$FactorsForSelection)
       surv.fit <- survfit(model.cox.selected$mod,newdata=data.frame(test$currentData[index_patient,index_feats]))
@@ -789,6 +751,64 @@ shinyServer(function(input, output, session) {
     }
     display
   })
+  })
+  
+  #---plot the cumulative baseline hazard
+  observeEvent({
+    input$FactorsForSelection
+    input$inputEventOfInterest
+    input$model
+    input$patientSelect
+  },
+  {output$cumulativeBaselineHazard <- renderPlotly({
+    if( length(input$FactorsForSelection) > 0 & !is.null(train$currentData) & !is.null(test$currentData) ){
+      if( input$model == "coxmodel" ){
+        cbh <- model.cox.selected$cbh
+        m <- plot_ly(x=cbh$time,y=cbh$hazard ) %>% add_lines(y=cbh$hazard,showlegend=FALSE,mode = 'markers',hoverinfo = 'text',text = paste('Time: ', cbh$time,'</br> Cum.Base.Haz: ',round(cbh$hazard,4)))
+        m <- layout(m, title = "Cumulative Baseline Hazard", xaxis = list(title="time"), yaxis = list(title="") )
+        m
+      }
+    }
+  })
+  },priority=0)
+  
+  #---print the table of cumulative baseline hazard values
+  observeEvent({
+    input$FactorsForSelection
+    input$inputEventOfInterest
+    input$model
+    input$patientSelect
+    input$thresholdSurvivalCurve
+    input$interval
+  },
+  {output$cbhDataTable <- renderDataTable({
+    display <- NULL
+    if( input$model == "coxmodel" & !is.null(model.cox.selected$cbh) ){
+      cbh <- model.cox.selected$cbh
+      display <- cbind(Time=cbh$time,"Cumulative baseline hazard"=round(cbh$hazard,4))
+    }
+    display
+  })
+  })
+  
+  #---print the threshold survival time
+  observeEvent({
+    input$FactorsForSelection
+    input$inputEventOfInterest
+    input$model
+    input$patientSelect
+    input$thresholdSurvivalCurve
+  },
+  {output$timeThreshold <- renderText({
+    if( input$model == "coxmodel"  & !is.null(model.cox.selected$cbh) ){
+      threshold <- strtoi(input$thresholdSurvivalCurve) / 100
+      index_patient <- strtoi(input$patientSelect)
+      index_feats <- strtoi(input$FactorsForSelection)
+      surv.fit <- survfit(model.cox.selected$mod,newdata=data.frame(test$currentData[index_patient,index_feats]))
+      time <- max( which(surv.fit$surv >= threshold , arr.ind = TRUE) )
+      paste("Time :",time,"days")
+    }
+    })
   })
   
   #---print the model summary (quality measures...)
