@@ -701,7 +701,8 @@ shinyServer(function(input, output, session) {
           computeCoxModel()
         }
         index_patient <- strtoi(input$patientSelect)
-        text <- tags$table(
+        text <- tags$h4("Cox Model")
+        table <- tags$table(
           tags$tr(
             tags$th(strong("Patient")),
             tags$th(test$patientsID[index_patient])
@@ -711,7 +712,7 @@ shinyServer(function(input, output, session) {
             tags$th(round(model.cox.selected$pred$fit[index_patient],4))
           )
         )
-        HTML(as.character(text))
+        HTML(as.character(paste(text,table)))
       }
     }
     })
@@ -865,7 +866,7 @@ shinyServer(function(input, output, session) {
     mseAll <- 0
     mseSelect <- 0
     if( input$model == "coxmodel"  & !is.null(train$currentData) & !is.null(test$currentData) ){
-      title <- paste(title,"Cox Model")
+      title <- "Cox Model"
       if( !is.null(model.cox.selected$ci) )
         ciSelect <- round(model.cox.selected$ci,6)
       if( !is.null(model.cox.selected$auc) )
@@ -879,7 +880,7 @@ shinyServer(function(input, output, session) {
       if( !is.null(model.cox.all$mse) )
         mseAll <- round(model.cox.all$mse,6)
     }
-    text <- paste(strong(title),br(),br())
+    text <- paste(tags$h4(title),br(),br())
     tableMeasures <- tags$table(
       tags$tr(
         tags$th(""),
