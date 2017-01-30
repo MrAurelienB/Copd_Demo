@@ -184,11 +184,11 @@ panelR3 <- tabPanel("Survival Curve",
 )
 
 panelR4 <- tabPanel("Survival Details",
-                      column(leftWidth,
-                        strong(textOutput("riskScore"))
+                      column(4,
+                        htmlOutput("riskScore")
                         
                       ),
-                      column(rightWidth
+                      column(8
                         
                       )
 )
