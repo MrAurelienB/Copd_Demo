@@ -16,6 +16,7 @@ library(ggplot2)
 library(GGally)
 library(plotly)
 library(RColorBrewer)
+library(class)
 
 
 # display parameters
