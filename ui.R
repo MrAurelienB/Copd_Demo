@@ -37,6 +37,7 @@ htmlTableStyle <- tags$style(type="text/css",
 tabPanel_Home <- tabPanel(
   strong("Home"),
   value = "home",
+  icon = icon("home"),
   errorStyle,
   fluidRow(
     column(width,
@@ -67,6 +68,7 @@ tabPanel_Home <- tabPanel(
 tabPanel_Data <- tabPanel(
   strong("Data"),
   value = "data",
+  icon = icon("upload"),
   errorStyle,
   fluidRow(
     #---MENU
@@ -103,6 +105,7 @@ tabPanel_Data <- tabPanel(
 tabPanel_Stat <- tabPanel(
   strong("Stat"),
   value = "stat",
+  icon = icon("bar-chart"),
   errorStyle,
   htmlTableStyle,
   fluidRow(
@@ -143,7 +146,10 @@ columnL <- column(leftWidth,
                     uiOutput("featuresForModel"),
                     style = "overflow-y:scroll; max-height: 300px"
                   ),
-                  uiOutput("patientSelection")
+                  actionButton(inputId = "modelCompute", label = "Compute the model", icon = icon("chevron-right")),
+                  hr(),
+                  uiOutput("patientSelection"),
+                  actionButton(inputId = "patientCompute", label = "Compute prediction for patient", icon = icon("chevron-right"))
 )
 
 panelR1 <- tabPanel("Coefficients",
@@ -211,6 +217,7 @@ columnR <- column(rightWidth,
 tabPanel_Prediction <- tabPanel(
   strong("Prediction"),
   value = "prediction",
+  icon = icon("line-chart"),
   errorStyle,
   fluidRow(
     columnL,

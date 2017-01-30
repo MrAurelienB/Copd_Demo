@@ -625,9 +625,10 @@ shinyServer(function(input, output, session) {
   
   #---compute the model
   observeEvent({
-    input$FactorsForSelection
-    input$inputEventOfInterest
-    input$model
+    #input$FactorsForSelection
+    #input$inputEventOfInterest
+    #input$model
+    input$modelCompute
   },
   {
     if( length(input$FactorsForSelection) > 0 & !is.null(train$currentData) & !is.null(test$currentData) ){
@@ -643,9 +644,10 @@ shinyServer(function(input, output, session) {
   
   #---plot the coefficients for the models
   observeEvent({
-    input$FactorsForSelection
-    input$inputEventOfInterest
-    input$model
+    #input$FactorsForSelection
+    #input$inputEventOfInterest
+    #input$model
+    input$modelCompute
   },
   {output$modelCoeff <- renderPlotly({
     if( length(input$FactorsForSelection) > 0 & !is.null(train$currentData) & !is.null(test$currentData) ){
@@ -678,10 +680,11 @@ shinyServer(function(input, output, session) {
   
   #---print the risk score of a patient
   observeEvent({
-    input$FactorsForSelection
-    input$inputEventOfInterest
-    input$model
-    input$patientSelect
+    #input$FactorsForSelection
+    #input$inputEventOfInterest
+    #input$model
+    #input$patientSelect
+    input$patientCompute
   },
   {output$riskScore <- renderText({
     if( length(input$FactorsForSelection) > 0 & !is.null(train$currentData) & !is.null(test$currentData) ){
@@ -696,10 +699,11 @@ shinyServer(function(input, output, session) {
   
   #---plot the survival curve for a patient
   observeEvent({
-    input$FactorsForSelection
-    input$inputEventOfInterest
-    input$model
-    input$patientSelect
+    #input$FactorsForSelection
+    #input$inputEventOfInterest
+    #input$model
+    #input$patientSelect
+    input$patientCompute
   },
   {output$survivalCurvePatient <- renderPlotly({
     if( length(input$FactorsForSelection) > 0 & !is.null(train$currentData) & !is.null(test$currentData) ){
@@ -717,12 +721,13 @@ shinyServer(function(input, output, session) {
   
   #---print the table of survival probability according to the time interval
   observeEvent({
-    input$FactorsForSelection
-    input$inputEventOfInterest
-    input$model
-    input$patientSelect
+    #input$FactorsForSelection
+    #input$inputEventOfInterest
+    #input$model
+    #input$patientSelect
     input$thresholdSurvivalCurve
     input$interval
+    input$patientCompute
   },
   {output$survivalDataTable <- renderDataTable({
     display <- NULL
@@ -755,10 +760,11 @@ shinyServer(function(input, output, session) {
   
   #---plot the cumulative baseline hazard
   observeEvent({
-    input$FactorsForSelection
-    input$inputEventOfInterest
-    input$model
-    input$patientSelect
+    #input$FactorsForSelection
+    #input$inputEventOfInterest
+    #input$model
+    #input$patientSelect
+    input$modelCompute
   },
   {output$cumulativeBaselineHazard <- renderPlotly({
     if( length(input$FactorsForSelection) > 0 & !is.null(train$currentData) & !is.null(test$currentData) ){
@@ -774,12 +780,10 @@ shinyServer(function(input, output, session) {
   
   #---print the table of cumulative baseline hazard values
   observeEvent({
-    input$FactorsForSelection
-    input$inputEventOfInterest
-    input$model
-    input$patientSelect
-    input$thresholdSurvivalCurve
-    input$interval
+    #input$FactorsForSelection
+    #input$inputEventOfInterest
+    #input$model
+    input$modelCompute
   },
   {output$cbhDataTable <- renderDataTable({
     display <- NULL
@@ -793,11 +797,12 @@ shinyServer(function(input, output, session) {
   
   #---print the threshold survival time
   observeEvent({
-    input$FactorsForSelection
-    input$inputEventOfInterest
-    input$model
-    input$patientSelect
+    #input$FactorsForSelection
+    #input$inputEventOfInterest
+    #input$model
+    #input$patientSelect
     input$thresholdSurvivalCurve
+    input$patientCompute
   },
   {output$timeThreshold <- renderText({
     if( input$model == "coxmodel"  & !is.null(model.cox.selected$cbh) ){
@@ -813,9 +818,10 @@ shinyServer(function(input, output, session) {
   
   #---print the model summary (quality measures...)
   observeEvent({
-    input$FactorsForSelection
-    input$inputEventOfInterest
-    input$model
+    #input$FactorsForSelection
+    #input$inputEventOfInterest
+    #input$model
+    input$modelCompute
   },
   {output$modelSummary <- renderUI({
     title <- "Model : "
