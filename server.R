@@ -24,8 +24,6 @@ shinyServer(function(input, output, session) {
   #------variables
   #############################
   
-  dataLoaded <- FALSE
-  
   #---list element that contains the training set objects
   train <- list(
     "n" = 0,
@@ -96,6 +94,12 @@ shinyServer(function(input, output, session) {
     "mse" <- NULL
   )
   
+  #---ojects for knn model
+  model.knn <- list(
+    "pred" <- NULL,
+    "precision" <- NULL
+  )
+  
   #############################
   #------functions
   #############################
@@ -103,6 +107,9 @@ shinyServer(function(input, output, session) {
   #---read the data file
   readDataFile <- function( name ){
     mydata <- read.csv(name, header = input$headerDataFile, sep = ';')
+    if( is.null(mydata ) | length(mydata[1,]) < 2 ){
+      mydata <- read.csv(name, header = input$headerDataFile, sep = ',')
+    }
     return(mydata)
   }
   
@@ -141,7 +148,7 @@ shinyServer(function(input, output, session) {
     names(train$listOfPatients) <<- paste(as.list(rep("Patient",n)),as.character(as.list(1:n)),":",as.character(train$patientsID))
     
     setEventOfInterest()
-    dataLoaded <<- TRUE
+
   }
   
   #---set the test data
@@ -180,11 +187,15 @@ shinyServer(function(input, output, session) {
       train$currentEvent <<- train$isDeath
       train$currentTime <<- train$timeDeath
       train$currentData <<- train$dataDeath
+      test$currentEvent <<- test$isDeath
+      test$currentTime <<- test$timeDeath
       test$currentData <<- test$dataDeath
     }else if( input$inputEventOfInterest == "Both" ){
       train$currentEvent <<- train$isBoth
       train$currentTime <<- train$timeBoth
       train$currentData <<- train$dataBoth
+      test$currentEvent <<- test$isBoth
+      test$currentTime <<- test$timeBoth
       test$currentData <<- test$dataBoth
     }
     train$listOfFeatures <<- as.list(1:length(train$currentData))
@@ -385,6 +396,17 @@ shinyServer(function(input, output, session) {
     mse / n
   }
   
+  #---compute knn classification
+  knn_prediction <- function( train , train.class , test , test.class , k ){
+    n.test <- length(test.class)
+    pred <- knn(train = train, test = test,train.class, k = k, prob = FALSE)
+    model.knn$pred <<- as.numeric(pred) - 1
+    precision <- (n.test-sum(abs(as.numeric(pred)-1-as.numeric(test.class))))
+    precision <- precision/n.test
+    model.knn$precision <<- precision
+  }
+  
+  
   #################################
   #------output and observeEvent
   #################################
@@ -421,22 +443,39 @@ shinyServer(function(input, output, session) {
     setEventOfInterest()
   )
   
-  #---load the default data
-  observeEvent(
-    input$defaultData, 
+  #---load the default data for prediction
+  observeEvent({
+    input$defaultDataPred
+    input$defaultDataClass
+  }, 
     {
-    path_trainingSet <- "www/copd_demo_train_csv.csv"
+    path_trainingSet <- "www/copd_demo_train_pred_csv.csv"
     train$initialData <<- readDataFile(path_trainingSet)
-    path_testSet <- "www/copd_demo_test_csv.csv"
+    path_testSet <- "www/copd_demo_test_pred_csv.csv"
     test$initialData <<- readDataFile(path_testSet)
     setTestData()
     setTrainingData()
   })
   
+  #---load the default data for classification
+  observeEvent({
+    input$defaultDataPred
+    input$defaultDataClass
+  }, 
+    {
+      path_trainingSet <- "www/copd_demo_train_class_csv.csv"
+      train$initialData <<- readDataFile(path_trainingSet)
+      path_testSet <- "www/copd_demo_test_class_csv.csv"
+      test$initialData <<- readDataFile(path_testSet)
+      setTestData()
+      setTrainingData()
+    })
+  
   #---create a ui select input for features
   observeEvent({
     input$inputEventOfInterest
-    input$defaultData
+    input$defaultDataPred
+    input$defaultDataClass
     input$data_file
     input$dataDisplay
     },
@@ -448,7 +487,8 @@ shinyServer(function(input, output, session) {
   
   #---create a ui select input for patients
   observeEvent({
-    input$defaultData
+    input$defaultDataPred
+    input$defaultDataClass
     input$data_file
     input$dataDisplay
     },
@@ -478,7 +518,8 @@ shinyServer(function(input, output, session) {
   #---print data table
   observeEvent({
     input$test_file
-    input$defaultData
+    input$defaultDataPred
+    input$defaultDataClass
     input$inputEventOfInterest
   },
   {output$dataInfos <- renderDataTable({
@@ -604,7 +645,8 @@ shinyServer(function(input, output, session) {
   #---select input to choose the features to apply a model
   observeEvent({
     input$data_file
-    input$defaultData
+    input$defaultDataPred
+    input$defaultDataClass
     input$model
     },
     {output$featuresForModel <- renderUI({
@@ -623,7 +665,7 @@ shinyServer(function(input, output, session) {
   {
     listOfChoices <- NULL
     listOfSelected <- character(0)
-    if( !is.null(train$listOfFeatures) & dataLoaded ){
+    if( !is.null(train$listOfFeatures) & !is.null(train$currentData) ){
       listOfChoices <- train$listOfFeatures
       if( input$selectAllNone ){
         listOfSelected <- train$listOfFeatures
@@ -675,7 +717,8 @@ shinyServer(function(input, output, session) {
   #---select input to choose a patient
   observeEvent({
     input$test_file
-    input$defaultData
+    input$defaultDataPred
+    input$defaultDataClass
     input$model
   },
   {output$patientSelection <- renderUI({
@@ -907,5 +950,39 @@ shinyServer(function(input, output, session) {
     HTML(text)
   })
   },priority=0)
+  
+  #---compute classification model
+  observeEvent({
+    input$classCompute
+  },
+  {
+    if( !is.null(train$currentData) & !is.null(test$currentData) ){
+      if( input$classificationMethod == "knn" ){
+        knn_prediction( train$currentData , train$currentEvent , test$currentData , test$currentEvent , 3 )
+      }
+    }
+  },priority = 1)
+  
+  #---print result of knn
+  observeEvent({
+    input$classCompute
+  },
+  {output$knnResult <- renderText({
+    text <- paste("Precision = ",100*round(model.knn$precision,4),"%",sep="")
+    HTML(text)
+  })
+  },priority = 0)
+  
+  #---print result of knn in dataTable
+  observeEvent({
+    input$classCompute
+  },
+  {output$knnPredTable <- renderDataTable({
+    if( input$classificationMethod == "knn" & !is.null(model.knn$pred) ){
+      display <- cbind( ID = test$patientsID, Event = test$currentEvent , Prediction = model.knn$pred )
+    }
+    display
+  })
+  },priority = 0)
   
 })

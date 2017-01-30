@@ -79,7 +79,9 @@ tabPanel_Data <- tabPanel(
       ),
       checkboxInput(inputId = "headerDataFile", label = "Header", TRUE),
       hr(),
-      actionLink(inputId = "defaultData", label = "Load Default COPD-Data"),
+      actionLink(inputId = "defaultDataPred", label = "Load Default COPD-Data for Prediction"),
+      br(),
+      actionLink(inputId = "defaultDataClass", label = "Load Default COPD-Data for Classification"),
       hr(),
       selectInput(inputId = "inputEventOfInterest", label = "Event of interest (failure)",
                   c("Death"="Death","Combined Events (Readmission and Death)"="Both"),
@@ -235,10 +237,18 @@ tabPanel_Classifier <- tabPanel(
   fluidRow(
     column(leftWidth,
       selectInput(inputId = "classificationMethod", label = "Select a Classifier",
-                   c("k-nn" = "knn","SVM" = "svm"),width='100%')
-      ),
-    column(rightWidth
-      
+                   c("k-nn" = "knn","SVM" = "svm"),width='100%'),
+      actionButton(inputId = "classCompute", label = "Compute classification")
+    ),
+    column(rightWidth,
+      fluidRow(
+        column(3,
+          strong(htmlOutput("knnResult"))  
+        ),
+        column(9,
+          dataTableOutput("knnPredTable")
+        )
+      )
     )
   )
 )
