@@ -234,6 +234,7 @@ tabPanel_Prediction <- tabPanel(
 tabPanel_Classifier <- tabPanel(
   strong("Classifier"),
   value = "classifier",
+  icon = icon("sort-amount-asc"),
   errorStyle,
   fluidRow(
     column(leftWidth,

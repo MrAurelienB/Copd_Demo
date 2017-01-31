@@ -438,12 +438,6 @@ shinyServer(function(input, output, session) {
       setTrainingData()
     })
   
-  #---change currentEvent in reaction to selectInput
-  observeEvent(
-    input$inputEventOfInterest,
-    setEventOfInterest()
-  )
-  
   #---load the default data for prediction
   observeEvent({
     input$defaultDataPred
@@ -470,6 +464,14 @@ shinyServer(function(input, output, session) {
       setTrainingData()
     })
   
+  #---change currentEvent in reaction to selectInput
+  observeEvent(
+    input$inputEventOfInterest,
+    if( !is.null(train$currentData) & !is.null(test$currentData) ){
+      setEventOfInterest()
+    }
+  )
+  
   #---create a ui select input for features
   observeEvent({
     input$inputEventOfInterest
@@ -479,8 +481,10 @@ shinyServer(function(input, output, session) {
     input$dataDisplay
     },
     {output$selectInputFeatures <- renderUI({
+      if( !is.null(train$currentData) & !is.null(test$currentData) ){
         listOfChoices = c("DEFAULT"="default",train$listOfFeatures)
         selectInput(inputId = "inputFeatures", label = "Select a feature",choices=listOfChoices,width='100%')
+      }
       })
     })
   
@@ -492,8 +496,10 @@ shinyServer(function(input, output, session) {
     input$dataDisplay
     },
     {output$selectInputPatients <- renderUI({
+      if( !is.null(train$currentData) & !is.null(test$currentData) ){
         listOfChoices = as.list(test$listOfPatients)
         selectInput(inputId = "inputPatients",label = "Select a patient",choices=test$listOfPatients,width='100%')
+      }
       })
     })
   
@@ -514,7 +520,7 @@ shinyServer(function(input, output, session) {
       }
     })
   
-  #---print data table
+  #---print data table for test set
   observeEvent({
     input$test_file
     input$defaultDataPred
@@ -523,29 +529,31 @@ shinyServer(function(input, output, session) {
   },
   {output$dataInfos <- renderDataTable({
     displayData <- NULL
-    if( test$n > 0 ){
-      displayData <- cbind(index=1:test$n,ID=test$patientsID)
-    }
-    if( input$inputEventOfInterest == "Both" ){
+    if( !is.null(test$currentData) ){
+      if( test$n > 0 ){
+        displayData <- cbind(index=1:test$n,ID=test$patientsID)
+      }
+      if( input$inputEventOfInterest == "Both" ){
+        displayData <- cbind(
+          displayData,
+          isEvent=test$isBoth,
+          timeEvent=test$timeBoth
+        )
+      }else if( input$inputEventOfInterest == "Death" ){
+        displayData <- cbind(
+          displayData,
+          isDeath=test$isDeath,
+          timeDeath=test$timeDeath
+        )
+      }
       displayData <- cbind(
         displayData,
-        isEvent=test$isBoth,
-        timeEvent=test$timeBoth
-      )
-    }else if( input$inputEventOfInterest == "Death" ){
-      displayData <- cbind(
-        displayData,
-        isDeath=test$isDeath,
-        timeDeath=test$timeDeath
+        admission=test$admission,
+        discharge=test$discharge,
+        disease=test$disease,
+        test$currentData
       )
     }
-    displayData <- cbind(
-      displayData,
-      admission=test$admission,
-      discharge=test$discharge,
-      disease=test$disease,
-      test$currentData
-    )
     displayData
   }, options = list(lengthMenu = c(10,25,50,test$n), pageLength = test$n ) )
   })
@@ -567,7 +575,7 @@ shinyServer(function(input, output, session) {
   observeEvent(
     input$inputPatients,
     {output$patientsInfos <- renderUI({
-      if( !is.null(train$currentData) ){
+      if( !is.null(test$currentData) ){
         if( input$dataDisplay == "patients" ){
           index <- strtoi(input$inputPatients)
           text <- getPatientInfos(index)
@@ -625,9 +633,8 @@ shinyServer(function(input, output, session) {
     input$inputFeatures
   },
   {output$survivalCurveFeature <- renderPlot({
-    if( !is.null(train$currentData) ){
       resultPlot <- NULL
-      if( input$dataDisplay == "features" & input$inputFeatures != "default" ){
+      if( !is.null(train$currentData) & input$dataDisplay == "features" & input$inputFeatures != "default" ){
         index_feat <- strtoi(input$inputFeatures)
         feat <- train$currentData[,index_feat]
         if( length(unique(feat)) < defaultCaterogicalLimit ){
@@ -637,7 +644,6 @@ shinyServer(function(input, output, session) {
         }
       }
       resultPlot
-    }
   })
   })
   
@@ -769,7 +775,6 @@ shinyServer(function(input, output, session) {
     input$patientCompute
   },
   {output$survivalCurvePatient <- renderPlotly({
-    print("called")
     if( length(input$FactorsForSelection) > 0 & !is.null(train$currentData) & !is.null(test$currentData) ){
       if( input$model == "coxmodel" ){
         if( is.null(model.cox.selected$mod) ){
@@ -798,8 +803,8 @@ shinyServer(function(input, output, session) {
   },
   {output$survivalDataTable <- renderDataTable({
     display <- NULL
-    if( input$model == "coxmodel" & !is.null(model.cox.selected$cbh) ){
-      if( is.null(model.cox.selected$mod) ){
+    if( input$model == "coxmodel" ){
+      if( is.null(model.cox.selected$mod) &  length(input$FactorsForSelection) > 0 & !is.null(train$currentData) & !is.null(test$currentData) ){
         computeCoxModel()
       }
       index_patient <- strtoi(input$patientSelect)
@@ -878,7 +883,7 @@ shinyServer(function(input, output, session) {
     input$patientCompute
   },
   {output$timeThreshold <- renderText({
-    if( input$model == "coxmodel"  & !is.null(model.cox.selected$cbh) ){
+    if( input$model == "coxmodel"  &  length(input$FactorsForSelection) > 0 & !is.null(train$currentData) & !is.null(test$currentData) ){
       if( is.null(model.cox.selected$mod) ){
         computeCoxModel()
       }
@@ -977,6 +982,7 @@ shinyServer(function(input, output, session) {
     input$classCompute
   },
   {output$knnPredTable <- renderDataTable({
+    display <- NULL
     if( input$classificationMethod == "knn" & !is.null(model.knn$pred) ){
       display <- cbind( ID = test$patientsID, Event = test$currentEvent , Prediction = model.knn$pred )
     }
