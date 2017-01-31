@@ -447,7 +447,6 @@ shinyServer(function(input, output, session) {
   #---load the default data for prediction
   observeEvent({
     input$defaultDataPred
-    input$defaultDataClass
   }, 
     {
     path_trainingSet <- "www/copd_demo_train_pred_csv.csv"
@@ -460,7 +459,6 @@ shinyServer(function(input, output, session) {
   
   #---load the default data for classification
   observeEvent({
-    input$defaultDataPred
     input$defaultDataClass
   }, 
     {
